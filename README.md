@@ -1,9 +1,9 @@
-# 我的阅藏 / media-tracker
+# Annouimo 的陈列室 / media-tracker
 
 一个单用户的阅读 / 动画档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人作品库**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M1–M9 已完成并部署到生产（`media-tracker.annouimo.com`）；首页改版和后台作品页合并在 `dev` 分支
+- 当前状态：M1–M9 已完成并部署到生产（`gallery.annouimo.com`）；首页改版和后台作品页合并在 `dev` 分支
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -39,7 +39,7 @@
   - Production branch = `main`
   - 启用 Preview Builds
   - Preview command = `bun run preview:ci`
-  - `dev` push 后预览地址形如 `dev.media-tracker.annouimo.com`
+  - `dev` push 后预览地址形如 `dev.gallery.annouimo.com`
 - Previews 不继承 production 设置；`wrangler.jsonc` 的 `previews` 块提供 D1 binding。当前 preview 指向同一个 D1，写功能上线前应换成独立 preview D1。
 
 ---
@@ -405,7 +405,7 @@ WHERE w.deleted_at IS NULL;
 
 后台使用独立布局：不渲染公开站的 header/footer。顶部是管理 header：
 
-- 品牌“我的阅藏 · 管理”（回到 `/admin`，即后台首页）；
+- 品牌“Annouimo 的陈列室 · 管理”（回到 `/admin`，即后台首页）；
 - 导航：首页、书架、添加作品；
 - 右侧：公开站点（新窗口）、主题切换、Access 邮箱、退出（`/cdn-cgi/access/logout`）。
 
@@ -662,7 +662,7 @@ D1 binding 已经声明在 `wrangler.jsonc`：
 在 **Settings → Domains & Routes** 绑定域名：
 
 ```text
-media-tracker.annouimo.com
+gallery.annouimo.com
 ```
 
 要加第二个域名，就在同一个地方继续 Add Custom Domain；不需要改代码，也不需要重新设置构建变量。
@@ -680,7 +680,7 @@ media-tracker.annouimo.com
 在 Zero Trust → Access → Applications 添加一个 Self-hosted 应用：
 
 ```text
-Domain: media-tracker.annouimo.com
+Domain: gallery.annouimo.com
 Path:   /admin*
 ```
 

@@ -159,7 +159,7 @@ export const CATEGORIES = [
   ```json
   {"title":"Forbidden","description":"Please set a 'User-Agent'"}
   ```
-  建议格式：`annouimo/media-tracker (https://media-tracker.annouimo.com)`。
+  建议格式：`annouimo/media-tracker (https://gallery.annouimo.com)`。
 - 分页：OpenAPI 文档 `limit` 上限 **50**；实测传 100 也接受，但脚本应按 50 写，307 条约 7 次请求。
 - 私有收藏：查看需要 `Authorization: Bearer <token>`；当前 307 条全部公开，不需要。
 - 条目详情：`GET /v0/subjects/{id}`，包含 `infobox`（作者 / 导演 / 艺术家 / 开发等），307 次请求。
@@ -504,7 +504,7 @@ logs:
 
 ```http
 GET https://api.bgm.tv/v0/users/793266/collections?limit=50&offset=0
-User-Agent: annouimo/media-tracker (https://media-tracker.annouimo.com)
+User-Agent: annouimo/media-tracker (https://gallery.annouimo.com)
 ```
 
 ```json
@@ -540,7 +540,7 @@ User-Agent: annouimo/media-tracker (https://media-tracker.annouimo.com)
 
 ```http
 GET https://api.bgm.tv/v0/subjects/400602
-User-Agent: annouimo/media-tracker (https://media-tracker.annouimo.com)
+User-Agent: annouimo/media-tracker (https://gallery.annouimo.com)
 ```
 
 条目详情里可取：

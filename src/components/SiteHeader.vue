@@ -9,7 +9,7 @@ import ThemeToggle from './ThemeToggle.vue'
   <header class="header">
     <nav class="header-nav" aria-label="主导航">
       <div class="logo">
-        <RouterLink class="logo-link" to="/">我的阅藏</RouterLink>
+        <RouterLink class="logo-link" to="/">Annouimo 的陈列室</RouterLink>
         <ThemeToggle />
       </div>
 

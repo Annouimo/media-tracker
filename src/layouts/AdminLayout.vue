@@ -9,7 +9,7 @@ import AdminToast from '../components/AdminToast.vue'
   <main class="admin-main">
     <RouterView />
   </main>
-  <footer class="admin-footer">我的阅藏 · 管理</footer>
+  <footer class="admin-footer">Annouimo 的陈列室 · 管理</footer>
   <AdminToast />
 </template>
 

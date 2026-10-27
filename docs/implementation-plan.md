@@ -1,4 +1,4 @@
-# 我的阅藏 — 实施计划
+# Annouimo 的陈列室 — 实施计划
 
 > 基于 `README.md` 第 1–3 节的设计、`migrations/0001_init.sql` 的 schema，以及已经通过 DBX 完成的旧数据导入。
 >
@@ -126,7 +126,7 @@
 - [x] `package.json` 设置 `packageManager: bun@1.4.3`，适配 Workers Builds 的 Bun 工具链。
 - [x] 部署方式确定为 Cloudflare Workers Builds 连接 GitHub，自动构建/部署。
 - [ ] 在 Cloudflare Dashboard 连接 GitHub 仓库，配置 build/deploy command（见 README 5.5）。
-- [ ] 首次部署创建 `media-tracker.annouimo.com` custom domain。
+- [ ] 首次部署创建 `gallery.annouimo.com` custom domain。
 - [ ] Access application（M3）：一个 `/admin*` 应用同时覆盖页面和 API。
 
 Workers Builds 目标配置：
@@ -142,7 +142,7 @@ Workers Builds 目标配置：
 - `main`：稳定发布，Cloudflare Production branch。
 - `dev`：日常开发分支；M1+ 都提交到 `dev`。
 - Cloudflare 启用 Preview Builds；Preview command = `bun run preview:ci`。
-- `dev` push 后预览地址：`dev.media-tracker.annouimo.com`。
+- `dev` push 后预览地址：`dev.gallery.annouimo.com`。
 - Previews 不继承 production 设置；`wrangler.jsonc` 的 `previews` 块提供 D1 binding。当前指向同一个 D1，写功能上线前换独立 preview D1。
 
 ### 2.5 本地开发运行时
@@ -312,7 +312,7 @@ src/lib/api.ts
 - 详情：摘要 + 可折叠完整记录
 - `test/api/public.test.ts`：公开 API/404/ETag/health
 - `bun run test`：32 passed
-- 本地 `dev.media-tracker.annouimo.com` 已验证 health；公开 API 已用完整本地数据验证（Great Expectations / The Week Junior 在读，51 本读过）
+- 本地 `dev.gallery.annouimo.com` 已验证 health；公开 API 已用完整本地数据验证（Great Expectations / The Week Junior 在读，51 本读过）
 
 ---
 

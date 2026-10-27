@@ -32,11 +32,11 @@ async function load(id: string): Promise<void> {
 
   try {
     detail.value = await getPublicWork(id)
-    document.title = `${detail.value.work.title} · 我的阅藏`
+    document.title = `${detail.value.work.title} · Annouimo 的陈列室`
   } catch (cause) {
     if (cause instanceof ApiError && cause.status === 404) {
       notFound.value = true
-      document.title = '作品不存在 · 我的阅藏'
+      document.title = '作品不存在 · Annouimo 的陈列室'
     } else {
       error.value = cause instanceof Error ? cause.message : '加载失败'
     }

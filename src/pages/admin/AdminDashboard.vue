@@ -64,7 +64,7 @@ async function load(): Promise<void> {
 }
 
 onMounted(() => {
-  document.title = '首页 · 我的阅藏'
+  document.title = '首页 · Annouimo 的陈列室'
   void load()
 })
 

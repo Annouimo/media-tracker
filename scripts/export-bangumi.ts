@@ -34,7 +34,7 @@ const OUT_DIR = join(ROOT, 'archive/bangumi/import')
 const USER_ID = '793266'
 const API_BASE = 'https://api.bgm.tv'
 const SITE_BASE = 'https://bgm.tv'
-const APP_UA = 'annouimo/media-tracker (https://media-tracker.annouimo.com)'
+const APP_UA = 'annouimo/media-tracker (https://gallery.annouimo.com)'
 const BROWSER_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/124.0 Safari/537.36'

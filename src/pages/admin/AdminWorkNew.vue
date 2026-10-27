@@ -15,7 +15,7 @@ const saving = ref(false)
 const serverError = ref('')
 
 onMounted(async () => {
-  document.title = '添加作品 · 我的阅藏'
+  document.title = '添加作品 · Annouimo 的陈列室'
   try {
     existingWorks.value = (await getWorkSummaries()).works
   } catch {

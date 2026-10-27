@@ -453,7 +453,7 @@ GET https://bgm.tv/user/793266/timeline?type=subject&page=1
 User-Agent: Mozilla/5.0 ...
 
 GET https://api.bgm.tv/v0/episodes?subject_id=331752&type=0&limit=100
-User-Agent: annouimo/media-tracker (https://media-tracker.annouimo.com)
+User-Agent: annouimo/media-tracker (https://gallery.annouimo.com)
 ```
 
 时间线单条：

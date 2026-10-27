@@ -41,7 +41,7 @@ async function load(id: string): Promise<void> {
 
   try {
     detail.value = await getAdminWork(id)
-    document.title = `${detail.value.work.title} · 我的阅藏`
+    document.title = `${detail.value.work.title} · Annouimo 的陈列室`
   } catch (cause) {
     if (cause instanceof ApiError && cause.status === 404) {
       notFound.value = true
@@ -56,7 +56,7 @@ async function load(id: string): Promise<void> {
 function updateWork(next: WorkWithState): void {
   if (!detail.value) return
   detail.value = { work: next, logs: detail.value.logs }
-  document.title = `${next.title} · 我的阅藏`
+  document.title = `${next.title} · Annouimo 的陈列室`
 }
 
 function setTab(next: Tab): void {

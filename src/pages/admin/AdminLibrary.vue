@@ -130,7 +130,7 @@ function errorMessage(cause: unknown): string {
 }
 
 onMounted(async () => {
-  document.title = '作品库 · 我的阅藏'
+  document.title = '作品库 · Annouimo 的陈列室'
   try {
     data.value = await getAdminState()
   } catch (cause) {
