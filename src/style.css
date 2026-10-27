@@ -254,10 +254,6 @@ textarea:focus-visible {
     --gap: 14px;
   }
 
-  .logo-link {
-    font-size: 22px;
-  }
-
   .menu {
     column-gap: var(--gap);
   }
