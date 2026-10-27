@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { categoryForType } from '../../../shared/categories'
-import { STATUS_LABELS, STATUS_ORDER } from '../../../shared/constants'
+import { categoryForType, copyForType } from '../../../shared/categories'
+import { NEUTRAL_STATUS } from '../../../shared/category-copy'
+import { STATUS_ORDER } from '../../../shared/constants'
 import { localDayFromEpoch } from '../../../shared/dates'
-import type { AdminState, WorkWithState } from '../../../shared/types'
+import type { AdminState, WorkStatus, WorkWithState } from '../../../shared/types'
 import { getAdminState } from '../../lib/admin-api'
-import { relativeDay } from '../../lib/format'
+import { progressLabel, relativeDay } from '../../lib/format'
 import { ApiError } from '../../lib/http'
 
 const data = ref<AdminState | null>(null)
@@ -25,6 +26,18 @@ const works = computed(() => data.value?.works ?? [])
 const typeOptions = computed(() =>
   [...new Set(works.value.map((work) => work.type))].sort((a, b) => a.localeCompare(b, 'zh-CN')),
 )
+const filterCopy = computed(() =>
+  typeFilter.value === 'all' ? null : copyForType(typeFilter.value),
+)
+
+function statusFilterLabel(status: WorkStatus): string {
+  return filterCopy.value?.status[status] ?? NEUTRAL_STATUS[status]
+}
+
+function copyFor(work: WorkWithState) {
+  return copyForType(work.type)
+}
+
 const yearOptions = computed(() =>
   [...new Set(works.value.map((work) => work.release_year).filter((year): year is number => year !== null))]
     .sort((a, b) => b - a),
@@ -90,9 +103,13 @@ function day(value: number | null): string {
 }
 
 function progressText(work: WorkWithState): string {
-  return work.total_progress > 1
-    ? `${work.state.progress} / ${work.total_progress}`
-    : '—'
+  if (work.total_progress <= 1) return '—'
+  return progressLabel(
+    work.state.progress,
+    work.total_progress,
+    work.state.status,
+    copyFor(work),
+  )
 }
 
 function isPublic(work: WorkWithState): boolean {
@@ -113,7 +130,7 @@ function errorMessage(cause: unknown): string {
 }
 
 onMounted(async () => {
-  document.title = '书架 · 我的阅藏'
+  document.title = '作品库 · 我的阅藏'
   try {
     data.value = await getAdminState()
   } catch (cause) {
@@ -128,10 +145,10 @@ onMounted(async () => {
   <div class="admin">
     <header class="admin-header">
       <div>
-        <h1>书架</h1>
+        <h1>作品库</h1>
         <p class="muted">
-          {{ works.length }} 本
-          <template v-if="!loading && !error"> · 当前显示 {{ filtered.length }} 本</template>
+          {{ works.length }} 条记录
+          <template v-if="!loading && !error"> · 当前显示 {{ filtered.length }} 条</template>
         </p>
       </div>
       <RouterLink class="add-link" to="/admin/works/new">添加作品</RouterLink>
@@ -139,11 +156,11 @@ onMounted(async () => {
 
     <div class="toolbar">
       <label class="search">
-        <span class="sr-only">搜索书架</span>
+        <span class="sr-only">搜索作品库</span>
         <input
           v-model="query"
           type="search"
-          placeholder="搜索书名、作者"
+          placeholder="搜索标题、作者/制作"
           autocomplete="off"
           spellcheck="false"
         />
@@ -154,7 +171,7 @@ onMounted(async () => {
         <select v-model="statusFilter">
           <option value="all">全部状态</option>
           <option v-for="status in STATUS_ORDER" :key="status" :value="status">
-            {{ STATUS_LABELS[status] }}
+            {{ statusFilterLabel(status) }}
           </option>
         </select>
       </label>
@@ -170,11 +187,11 @@ onMounted(async () => {
       </label>
 
       <label>
-        <span class="sr-only">章节设置</span>
+        <span class="sr-only">进度设置</span>
         <select v-model="chapterFilter">
-          <option value="all">全部章节</option>
-          <option value="chapter">按章节</option>
-          <option value="binary">未分章</option>
+          <option value="all">全部进度</option>
+          <option value="chapter">已设进度</option>
+          <option value="binary">未设置</option>
         </select>
       </label>
 
@@ -200,8 +217,8 @@ onMounted(async () => {
         <select v-model="sort">
           <option value="recent">最近活动</option>
           <option value="added">添加时间</option>
-          <option value="title">书名</option>
-          <option value="finished">读完时间</option>
+          <option value="title">标题</option>
+          <option value="finished">完成时间</option>
         </select>
       </label>
 
@@ -220,12 +237,12 @@ onMounted(async () => {
           <tr>
             <th>作品</th>
             <th>分类</th>
-            <th>作者</th>
+            <th>作者/制作</th>
             <th>状态</th>
             <th>进度</th>
             <th>最近活动</th>
             <th>添加</th>
-            <th>读完</th>
+            <th>完成</th>
             <th>短评</th>
             <th>操作</th>
           </tr>
@@ -239,8 +256,8 @@ onMounted(async () => {
               <span v-else>{{ work.title }}</span>
             </td>
             <td class="category" data-label="分类">{{ typeLabel(work.type) }}</td>
-            <td data-label="作者">{{ work.creator || '—' }}</td>
-            <td data-label="状态">{{ STATUS_LABELS[work.state.status] }}</td>
+            <td data-label="作者/制作">{{ work.creator || '—' }}</td>
+            <td data-label="状态">{{ copyFor(work).status[work.state.status] }}</td>
             <td class="num" data-label="进度">{{ progressText(work) }}</td>
             <td
               class="num"
@@ -250,7 +267,7 @@ onMounted(async () => {
               {{ work.state.loggedOn ? relativeDay(work.state.loggedOn) : '—' }}
             </td>
             <td class="num" data-label="添加">{{ day(work.added_at) }}</td>
-            <td class="num" data-label="读完">{{ work.state.finishedOn ?? '—' }}</td>
+            <td class="num" data-label="完成">{{ work.state.finishedOn ?? '—' }}</td>
             <td data-label="短评">{{ work.short_review ? '有' : '—' }}</td>
             <td class="actions" data-label="操作">
               <RouterLink class="action" :to="`/admin/works/${work.id}/progress`">

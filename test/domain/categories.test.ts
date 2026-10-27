@@ -29,6 +29,7 @@ describe('category registry', () => {
   it('finds a category by slug', () => {
     expect(findCategory('book')?.label).toBe('图书')
     expect(findCategory('textbook')?.path).toBe('/textbooks')
+    expect(findCategory('anime')?.label).toBe('动画')
     expect(findCategory('nope')).toBeUndefined()
   })
 
@@ -36,6 +37,7 @@ describe('category registry', () => {
     expect(categoryForType('Book')?.slug).toBe('book')
     expect(categoryForType('book')?.slug).toBe('book')
     expect(categoryForType(' Textbook ')?.slug).toBe('textbook')
+    expect(categoryForType('Anime')?.slug).toBe('anime')
     expect(categoryForType('Comic')).toBeUndefined()
   })
 

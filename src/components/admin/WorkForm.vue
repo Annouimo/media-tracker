@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, onBeforeRouteLeave } from 'vue-router'
 import type { ZodError } from 'zod'
-import { CATEGORIES } from '../../../shared/categories'
+import { CATEGORIES, copyForType } from '../../../shared/categories'
 import {
   DEFAULT_TYPE,
   MAX_CREATOR_LENGTH,
@@ -11,7 +11,6 @@ import {
   MAX_SHORT_REVIEW_LENGTH,
   MAX_TITLE_LENGTH,
   MAX_TYPE_LENGTH,
-  STATUS_LABELS,
 } from '../../../shared/constants'
 import { isValidDateOnly, todayLocalDay } from '../../../shared/dates'
 import {
@@ -93,19 +92,20 @@ const jsonMode = ref(false)
 const jsonText = ref('')
 const jsonIssues = ref<string[]>([])
 const dirty = ref(false)
+const copy = computed(() => copyForType(draft.value.type))
 
-const FIELD_MESSAGES: Record<string, string> = {
+const fieldMessages = computed<Record<string, string>>(() => ({
   title: `请填写标题（1–${MAX_TITLE_LENGTH} 字）`,
-  creator: `作者不能超过 ${MAX_CREATOR_LENGTH} 字`,
+  creator: `${copy.value.creatorLabel}不能超过 ${MAX_CREATOR_LENGTH} 字`,
   release_year: `年份需为 0–${MAX_RELEASE_YEAR} 的整数`,
   type: '请选择分类',
-  total_progress: `总章节数需为 1–${MAX_PROGRESS} 的整数`,
-  progress: '进度需在 0 到总章节数之间',
-  finished_on: '读完日期格式应为 YYYY-MM-DD',
+  total_progress: `${copy.value.totalField}需为 1–${MAX_PROGRESS} 的整数`,
+  progress: `进度需在 0 到${copy.value.totalField}之间`,
+  finished_on: `${copy.value.finishedLabel}格式应为 YYYY-MM-DD`,
   short_review: `短评不能超过 ${MAX_SHORT_REVIEW_LENGTH} 字`,
   long_review_url: '长评链接需以 https:// 开头',
-  confirm_binary: '请填写章节数，或勾选「保持未分章」',
-}
+  confirm_binary: `请填写${copy.value.chapterInput}，或勾选「${copy.value.keepBinary}」`,
+}))
 
 function applyInitial(value: UpdateWorkInput | null | undefined): void {
   if (!value) {
@@ -221,16 +221,16 @@ function validate(): boolean {
   generalError.value = ''
 
   const title = draft.value.title.trim()
-  if (!title) errors.value.title = FIELD_MESSAGES.title
-  else if (title.length > MAX_TITLE_LENGTH) errors.value.title = FIELD_MESSAGES.title
+  if (!title) errors.value.title = fieldMessages.value.title
+  else if (title.length > MAX_TITLE_LENGTH) errors.value.title = fieldMessages.value.title
 
   if (draft.value.creator.trim().length > MAX_CREATOR_LENGTH) {
-    errors.value.creator = FIELD_MESSAGES.creator
+    errors.value.creator = fieldMessages.value.creator
   }
 
   const chapters = total.value
   if (!Number.isInteger(chapters) || chapters < 1 || chapters > MAX_PROGRESS) {
-    errors.value.total_progress = FIELD_MESSAGES.total_progress
+    errors.value.total_progress = fieldMessages.value.total_progress
   }
 
   const year = yearNumber()
@@ -238,20 +238,20 @@ function validate(): boolean {
     draft.value.release_year.trim() !== '' &&
     (year === null || !Number.isInteger(year) || year < 0 || year > MAX_RELEASE_YEAR)
   ) {
-    errors.value.release_year = FIELD_MESSAGES.release_year
+    errors.value.release_year = fieldMessages.value.release_year
   }
 
   if (!draft.value.type.trim() || draft.value.type.trim().length > MAX_TYPE_LENGTH) {
-    errors.value.type = FIELD_MESSAGES.type
+    errors.value.type = fieldMessages.value.type
   }
 
   if (draft.value.short_review.length > MAX_SHORT_REVIEW_LENGTH) {
-    errors.value.short_review = FIELD_MESSAGES.short_review
+    errors.value.short_review = fieldMessages.value.short_review
   }
 
   const url = draft.value.long_review_url.trim()
   if (url !== '' && !/^https:\/\/[^\s]+$/i.test(url)) {
-    errors.value.long_review_url = FIELD_MESSAGES.long_review_url
+    errors.value.long_review_url = fieldMessages.value.long_review_url
   }
 
   if (props.mode === 'new') {
@@ -261,20 +261,20 @@ function validate(): boolean {
       draft.value.progress.trim() !== '' &&
       (progress === null || !Number.isInteger(progress) || progress < 0 || progress > chapters)
     ) {
-      errors.value.progress = FIELD_MESSAGES.progress
+      errors.value.progress = fieldMessages.value.progress
     }
     if (draft.value.status === 'reading' && chapters <= 1 && !draft.value.confirm_binary) {
-      errors.value.confirm_binary = FIELD_MESSAGES.confirm_binary
+      errors.value.confirm_binary = fieldMessages.value.confirm_binary
     }
     if (
       draft.value.status === 'done' &&
       draft.value.finished_on !== '' &&
       !isValidDateOnly(draft.value.finished_on)
     ) {
-      errors.value.finished_on = FIELD_MESSAGES.finished_on
+      errors.value.finished_on = fieldMessages.value.finished_on
     }
   } else if (props.currentProgress != null && chapters < props.currentProgress) {
-    errors.value.total_progress = `总章节数不能低于当前进度（${props.currentProgress}）`
+    errors.value.total_progress = `${copy.value.totalField}不能低于当前进度（${props.currentProgress}）`
   }
 
   return Object.keys(errors.value).length === 0
@@ -285,7 +285,7 @@ function fillIssues(error: ZodError): void {
   for (const issue of error.issues) {
     const key = String(issue.path[0] ?? '')
     if (key && !next[key]) {
-      next[key] = FIELD_MESSAGES[key] ?? issue.message
+      next[key] = fieldMessages.value[key] ?? issue.message
     } else if (!key && !generalError.value) {
       generalError.value = issue.message
     }
@@ -455,7 +455,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
 
           <div class="field-row">
             <div class="field">
-              <label for="work-creator">作者</label>
+              <label for="work-creator">{{ copy.creatorLabel }}</label>
               <input
                 id="work-creator"
                 v-model="draft.creator"
@@ -503,7 +503,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
             </div>
 
             <div class="field field-narrow">
-              <label for="work-total">总章节数</label>
+              <label for="work-total">{{ copy.totalField }}</label>
               <input
                 id="work-total"
                 v-model="draft.total_progress"
@@ -513,7 +513,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
                 inputmode="numeric"
                 :disabled="saving"
               />
-              <p class="field-hint">1 = 未分章</p>
+              <p class="field-hint">{{ copy.totalHint }}</p>
               <p v-if="errors.total_progress" class="field-error" role="alert">
                 {{ errors.total_progress }}
               </p>
@@ -526,7 +526,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
                 <label for="work-status">初始状态</label>
                 <select id="work-status" v-model="draft.status" :disabled="saving">
                   <option v-for="status in WORK_STATUSES" :key="status" :value="status">
-                    {{ STATUS_LABELS[status] }}
+                    {{ copy.status[status] }}
                   </option>
                 </select>
               </div>
@@ -540,7 +540,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
                   min="0"
                   :max="total > 0 ? total : undefined"
                   inputmode="numeric"
-                  :placeholder="draft.status === 'done' ? '默认总章节数' : '默认 0'"
+                  :placeholder="draft.status === 'done' ? `默认${copy.totalField}` : '默认 0'"
                   :disabled="saving"
                 />
                 <p v-if="errors.progress" class="field-error" role="alert">{{ errors.progress }}</p>
@@ -548,7 +548,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
             </div>
 
             <div v-if="draft.status === 'done'" class="field">
-              <label for="work-finished">读完日期</label>
+              <label for="work-finished">{{ copy.finishedLabel }}</label>
               <input
                 id="work-finished"
                 v-model="draft.finished_on"
@@ -564,7 +564,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
 
             <label v-if="draft.status === 'reading' && total <= 1" class="checkbox">
               <input v-model="draft.confirm_binary" type="checkbox" :disabled="saving" />
-              <span>保持未分章（不设置章节数）</span>
+              <span>{{ copy.keepBinary }}（不设置{{ copy.chapterInput }}）</span>
             </label>
             <p v-if="errors.confirm_binary" class="field-error" role="alert">
               {{ errors.confirm_binary }}
@@ -609,7 +609,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
         <p v-if="serverError" class="form-error" role="alert">{{ serverError }}</p>
 
         <p v-if="duplicates.length" class="duplicate">
-          已存在同名同作者作品：
+          已存在同名作品：
           <RouterLink
             v-for="work in duplicates"
             :key="work.id"

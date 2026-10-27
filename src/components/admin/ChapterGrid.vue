@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { CategoryCopy } from '../../../shared/category-copy'
 
 const props = withDefaults(
   defineProps<{
@@ -7,10 +8,11 @@ const props = withDefaults(
     progress: number
     disabled?: boolean
     label?: string
+    copy: CategoryCopy
   }>(),
   {
     disabled: false,
-    label: '章节进度',
+    label: '进度',
   },
 )
 
@@ -35,7 +37,7 @@ function select(cell: number): void {
       :class="{ read: cell <= progress, current: cell === progress + 1 && progress < total }"
       type="button"
       :disabled="disabled"
-      :aria-label="`标记读到第 ${cell} 章`"
+      :aria-label="`${copy.chapterAriaPrefix} ${cell} ${copy.progressUnit}`"
       :aria-pressed="cell <= progress"
       @click="select(cell)"
     >

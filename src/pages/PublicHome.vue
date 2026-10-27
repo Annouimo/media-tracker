@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { findCategory } from '../../shared/categories'
+import { copyForCategory, findCategory } from '../../shared/categories'
 import type { PublicHome as PublicHomeData, PublicWork } from '../../shared/types'
 import { getPublicCategory } from '../lib/api'
 
@@ -14,6 +14,7 @@ const query = ref('')
 
 const currentCategory = computed(() => findCategory(props.category))
 const categoryLabel = computed(() => currentCategory.value?.label ?? '')
+const copy = computed(() => copyForCategory(props.category))
 
 const normalizedQuery = computed(() => query.value.trim().toLowerCase())
 
@@ -75,7 +76,7 @@ watch(
 
     <template v-else>
       <p v-if="reading.length" class="reading-line">
-        <span class="reading-label">在读：</span>
+        <span class="reading-label">{{ copy.readingLine }}</span>
         <template v-for="(work, index) in reading" :key="work.id">
           <span v-if="index > 0"> · </span>
           <RouterLink :to="`/works/${work.id}`">{{ work.title }}</RouterLink>
@@ -88,7 +89,7 @@ watch(
           v-model="query"
           class="search-input"
           type="search"
-          placeholder="搜索书名、作者、短评"
+          :placeholder="copy.searchPlaceholder"
           autocomplete="off"
           spellcheck="false"
           @keydown.esc="query = ''"
@@ -109,7 +110,7 @@ watch(
         </section>
 
         <section v-if="archive.length" class="section" aria-labelledby="archive-title">
-          <h2 id="archive-title" class="section-title">读过</h2>
+          <h2 id="archive-title" class="section-title">{{ copy.readSection }}</h2>
           <ul class="title-columns">
             <li v-for="work in archive" :key="work.id">
               <RouterLink :to="`/works/${work.id}`">{{ work.title }}</RouterLink>
@@ -119,7 +120,7 @@ watch(
       </template>
 
       <p v-else class="empty">
-        {{ isSearching ? '没有匹配的作品。' : '还没有读过作品。' }}
+        {{ isSearching ? '没有匹配的作品。' : copy.emptyRead }}
       </p>
     </template>
   </div>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { categoryForType } from '../../shared/categories'
-import { STATUS_LABELS } from '../../shared/constants'
+import { categoryForType, copyForType } from '../../shared/categories'
 import type { WorkStatus } from '../../shared/types'
 
 type PreviewData = {
@@ -27,6 +26,7 @@ const props = defineProps<{
 const status = computed<WorkStatus>(
   () => props.data?.status ?? props.currentStatus ?? 'wish',
 )
+const copy = computed(() => copyForType(props.data?.type ?? 'Book'))
 const total = computed(() => props.data?.total_progress ?? 1)
 const typeLabel = computed(() => {
   const type = props.data?.type ?? ''
@@ -37,17 +37,20 @@ const progress = computed(() => {
   return props.data?.progress ?? (status.value === 'done' ? total.value : 0)
 })
 
-const progressText = computed(() =>
-  total.value > 1
-    ? `${progress.value} / ${total.value} 章`
-    : STATUS_LABELS[status.value],
-)
+const progressText = computed(() => {
+  if (total.value > 1) {
+    return status.value === 'done' && progress.value === 0
+      ? copy.value.doneUnknownProgress
+      : `${progress.value} / ${total.value} ${copy.value.progressUnit}`
+  }
+  return copy.value.status[status.value]
+})
 
 const initialLogText = computed(() => {
   if (!props.data) return ''
   if (props.mode === 'edit') return '状态和进度只读，请在进度页修改。'
-  if (status.value === 'wish') return '保存后不创建初始 log（想读）。'
-  return `保存后创建初始 log：${STATUS_LABELS[status.value]}，${progressText.value}。`
+  if (status.value === 'wish') return `保存后不创建初始 log（${copy.value.status.wish}）。`
+  return `保存后创建初始 log：${copy.value.status[status.value]}，${progressText.value}。`
 })
 </script>
 
@@ -59,10 +62,10 @@ const initialLogText = computed(() => {
         <span v-if="data.creator">{{ data.creator }}</span>
         <span v-if="data.release_year">{{ data.release_year }}</span>
         <span>{{ typeLabel }}</span>
-        <span>{{ STATUS_LABELS[status] }}</span>
+        <span>{{ copy.status[status] }}</span>
       </p>
       <p class="preview-progress">{{ progressText }}</p>
-      <p v-if="data.finished_on" class="preview-note">读完日期：{{ data.finished_on }}</p>
+      <p v-if="data.finished_on" class="preview-note">{{ copy.finishedLabel }}：{{ data.finished_on }}</p>
       <p v-if="data.short_review" class="preview-review">{{ data.short_review }}</p>
       <p v-if="data.long_review_url" class="preview-link">
         <a :href="data.long_review_url" target="_blank" rel="noopener noreferrer">长评 →</a>

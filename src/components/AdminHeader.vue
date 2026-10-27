@@ -40,7 +40,7 @@ onMounted(async () => {
 
       <nav class="admin-nav" aria-label="管理导航">
         <RouterLink to="/admin" :class="{ active: isHome }">首页</RouterLink>
-        <RouterLink to="/admin/library" :class="{ active: isLibrary }">书架</RouterLink>
+        <RouterLink to="/admin/library" :class="{ active: isLibrary }">作品库</RouterLink>
         <RouterLink to="/admin/works/new" :class="{ active: isAdd }">添加作品</RouterLink>
       </nav>
 

@@ -5,7 +5,7 @@ import { RouterLink } from 'vue-router'
 <template>
   <div class="admin-not-found">
     <h1>管理页不存在</h1>
-    <p><RouterLink to="/admin/library">返回书架</RouterLink></p>
+    <p><RouterLink to="/admin/library">返回作品库</RouterLink></p>
   </div>
 </template>
 

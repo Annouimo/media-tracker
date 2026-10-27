@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { categoryForType } from '../../shared/categories'
+import { categoryForType, copyForType } from '../../shared/categories'
 import type { PublicWorkDetail } from '../../shared/types'
 import { ApiError, getPublicWork } from '../lib/api'
 import { describeLog, progressSummary, statusLabel } from '../lib/format'
@@ -14,6 +14,7 @@ const error = ref('')
 
 const work = computed(() => detail.value?.work ?? null)
 const logs = computed(() => detail.value?.logs ?? [])
+const copy = computed(() => copyForType(work.value?.type ?? ''))
 const typeLabel = computed(() => {
   const type = work.value?.type
   return type ? (categoryForType(type)?.label ?? type) : ''
@@ -82,10 +83,10 @@ watch(
           <span v-if="work.creator">{{ work.creator }}</span>
           <span v-if="work.release_year">{{ work.release_year }}</span>
           <span>{{ typeLabel }}</span>
-          <span>{{ statusLabel(work.status) }}</span>
-          <span v-if="work.finished_on">读完于 {{ work.finished_on }}</span>
+          <span>{{ statusLabel(work.status, copy) }}</span>
+          <span v-if="work.finished_on">{{ copy.finishedOn }} {{ work.finished_on }}</span>
         </p>
-        <p class="progress">{{ progressSummary(work) }}</p>
+        <p class="progress">{{ progressSummary(work, copy) }}</p>
       </header>
 
       <p v-if="work.short_review" class="review">{{ work.short_review }}</p>
@@ -101,7 +102,7 @@ watch(
             <span class="history-date">{{ log.logged_on }}</span>
             <span class="history-text">
               <span v-if="log.round > 1" class="history-round">第 {{ log.round }} 次 · </span>
-              {{ describeLog(log) }}
+              {{ describeLog(log, copy) }}
             </span>
           </li>
         </ol>

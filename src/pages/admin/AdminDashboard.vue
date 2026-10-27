@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { copyForType } from '../../../shared/categories'
 import { todayLocalDay } from '../../../shared/dates'
 import type { AdminState, WorkWithState } from '../../../shared/types'
 import ChapterGrid from '../../components/admin/ChapterGrid.vue'
 import { getAdminState, postProgress, postStatus } from '../../lib/admin-api'
-import { relativeDay } from '../../lib/format'
+import { progressLabel, relativeDay } from '../../lib/format'
 import { ApiError } from '../../lib/http'
 import { showToast } from '../../lib/toast'
 
@@ -24,10 +25,17 @@ const loggedOn = computed(() =>
   logDate.value !== '' && logDate.value !== today ? logDate.value : undefined,
 )
 
-function progressLabel(work: WorkWithState): string {
-  return work.total_progress > 1
-    ? `${work.state.progress} / ${work.total_progress} 章`
-    : '未分章'
+function copyFor(work: WorkWithState) {
+  return copyForType(work.type)
+}
+
+function workProgress(work: WorkWithState): string {
+  return progressLabel(
+    work.state.progress,
+    work.total_progress,
+    work.state.status,
+    copyFor(work),
+  )
 }
 
 function errorMessage(cause: unknown): string {
@@ -98,7 +106,7 @@ async function markDone(work: WorkWithState): Promise<void> {
       logged_on: loggedOn.value,
     })
     replaceWork(result.work)
-    showToast('已标记读完')
+    showToast(`已标记${copyFor(work).status.done}`)
   } catch (cause) {
     error.value = errorMessage(cause)
   } finally {
@@ -111,9 +119,9 @@ async function markDone(work: WorkWithState): Promise<void> {
   <div class="dashboard">
     <header class="dash-header">
       <div>
-        <h1>在读</h1>
+        <h1>进行中</h1>
         <p class="muted">
-          {{ reading.length }} 本在读
+          {{ reading.length }} 项进行中
           <template v-if="!loading && !error"> · 点格子直接记录进度</template>
         </p>
       </div>
@@ -132,8 +140,8 @@ async function markDone(work: WorkWithState): Promise<void> {
       <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
 
       <p v-if="reading.length === 0" class="empty">
-        当前没有在读的作品。
-        <RouterLink to="/admin/library">去书架看看</RouterLink>
+        当前没有进行中的作品。
+        <RouterLink to="/admin/library">去作品库看看</RouterLink>
       </p>
 
       <div v-else class="reading-list">
@@ -147,7 +155,7 @@ async function markDone(work: WorkWithState): Promise<void> {
               </h2>
               <p class="meta">
                 <span v-if="work.creator">{{ work.creator }}</span>
-                <span>{{ progressLabel(work) }}</span>
+                <span>{{ workProgress(work) }}</span>
                 <span v-if="work.state.loggedOn" :title="work.state.loggedOn">
                   最近：{{ relativeDay(work.state.loggedOn) }}
                 </span>
@@ -161,7 +169,7 @@ async function markDone(work: WorkWithState): Promise<void> {
                 :disabled="saving"
                 @click="markDone(work)"
               >
-                读完
+                {{ copyFor(work).doneAction }}
               </button>
               <RouterLink class="open" :to="`/admin/works/${work.id}/progress`">
                 进度页 →
@@ -174,18 +182,19 @@ async function markDone(work: WorkWithState): Promise<void> {
             :total="work.total_progress"
             :progress="work.state.progress"
             :disabled="saving"
-            :label="`${work.title} 的章节进度`"
+            :copy="copyFor(work)"
+            :label="`${work.title} 的${copyFor(work).chapterLabel}`"
             @select="setCell(work, $event)"
           />
           <div v-else class="binary-row">
-            <span class="hint">未分章作品</span>
+            <span class="hint">{{ copyFor(work).binaryHint }}</span>
             <button
               class="btn primary"
               type="button"
               :disabled="saving"
               @click="markDone(work)"
             >
-              标记读完
+              {{ copyFor(work).markDone }}
             </button>
           </div>
         </article>
