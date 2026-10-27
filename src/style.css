@@ -108,6 +108,18 @@ ul {
   padding: 0;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 img {
   display: block;
   max-width: 100%;
@@ -193,6 +205,10 @@ code {
   max-width: calc(var(--main-width) + var(--gap) * 2);
   margin: auto;
   padding: var(--gap);
+}
+
+.main--wide {
+  max-width: calc(960px + var(--gap) * 2);
 }
 
 .page-title {

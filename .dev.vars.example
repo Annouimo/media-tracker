@@ -1,0 +1,7 @@
+# Local-only Access bypass. Ignored unless the request host is localhost.
+DEV_AUTH_BYPASS=1
+
+# Cloudflare Access configuration (not secrets). Set these for production and
+# preview deployments in the Worker settings or wrangler.jsonc vars.
+# ACCESS_TEAM_DOMAIN=https://<team>.cloudflareaccess.com
+# ACCESS_AUD=<Access application AUD>

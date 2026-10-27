@@ -57,7 +57,7 @@
 
 - [ ] 公开首页、公开详情与 PaperMod 风格一致，移动端可用。
 - [ ] 公开 API 只返回“曾经读完”或“当前在读”的作品；wish / 仅 paused 不泄露。
-- [ ] `/admin/*` 与 `/api/admin/*` 受 Access 保护；未登录返回 401/跳转。
+- [ ] `/admin*` 受 Access 保护（同时覆盖页面和 `/admin/api/*`）；未登录返回 401/跳转。
 - [ ] 进度格子只写 progress，点最后一格不自动 done；“读完”必须手动。
 - [ ] 二元作品进入 reading 时提示章节数；可显式保持二元。
 - [ ] 状态变更、进度变更、撤销都通过 log 快照；`works` 不保存 `status`。
@@ -125,7 +125,7 @@
 - [x] 部署方式确定为 Cloudflare Workers Builds 连接 GitHub，自动构建/部署。
 - [ ] 在 Cloudflare Dashboard 连接 GitHub 仓库，配置 build/deploy command（见 README 5.5）。
 - [ ] 首次部署创建 `media-tracker.annouimo.com` custom domain。
-- [ ] Access application（M3）：`/admin/*`、`/api/admin/*`。
+- [ ] Access application（M3）：一个 `/admin*` 应用同时覆盖页面和 API。
 
 Workers Builds 目标配置：
 
@@ -134,6 +134,14 @@ Workers Builds 目标配置：
 | Build command | `bun run build` |
 | Deploy command | `bun run deploy:ci` |
 | Build variables | 无 |
+
+### 2.4.1 Git 分支与 Preview
+
+- `main`：稳定发布，Cloudflare Production branch。
+- `dev`：日常开发分支；M1+ 都提交到 `dev`。
+- Cloudflare 启用 Preview Builds；Preview command = `bun run preview:ci`。
+- `dev` push 后预览地址：`dev.media-tracker.annouimo.com`。
+- Previews 不继承 production 设置；`wrangler.jsonc` 的 `previews` 块提供 D1 binding。当前指向同一个 D1，写功能上线前换独立 preview D1。
 
 ### 2.5 本地开发运行时
 
@@ -224,6 +232,17 @@ shared/
 
 **M1 验收**：不写页面，仅用测试/脚本证明领域逻辑与导入数据一致。
 
+### 3.5 M1 完成记录（dev）
+
+- `shared/types.ts` / `constants.ts` / `dates.ts` / `schemas.ts`
+- `worker/domain/state.ts` / `errors.ts` / `dates.ts`
+- `worker/db/queries.ts` / `mutations.ts`
+- `test/domain/*.test.ts`、`test/db/*.test.ts`
+- `test/fixtures/seed.sql`：5 本 / 8 条 log 的脱敏 fixture
+- `bun run test`：27 passed
+- `bun run typecheck`、`bun run typecheck:test`、`bun run build` 通过
+- 当前状态查询在远程全量 D1 上验证：283 行，wish 204 / reading 2 / done 51 / paused 26
+
 ---
 
 ## 4. M2 — 公开 API 与公开页面
@@ -280,6 +299,19 @@ src/lib/api.ts
 
 **M2 验收**：公开 API 不泄露 wish / 仅 paused；首页三块与详情在桌面/手机正常；重读作品同时出现在“在读”和“读过”。
 
+### 4.3 M2 完成记录（dev）
+
+- `worker/routes/public.ts`：`/api/public/home`、`/api/public/works/:id`、ETag/304
+- `worker/lib/etag.ts`
+- `src/router.ts`、`src/lib/api.ts`、`src/lib/format.ts`
+- `src/pages/PublicHome.vue`、`PublicWork.vue`、`NotFound.vue`
+- `src/components/SiteHeader.vue`、`SiteFooter.vue`、`ThemeToggle.vue`
+- 首页：当前在读、短评、读过 2 列、客户端搜索
+- 详情：摘要 + 可折叠完整记录
+- `test/api/public.test.ts`：公开 API/404/ETag/health
+- `bun run test`：32 passed
+- 本地 `dev.media-tracker.annouimo.com` 已验证 health；公开 API 已用完整本地数据验证（Great Expectations / The Week Junior 在读，51 本读过）
+
 ---
 
 ## 5. M3 — Access 与后台书架
@@ -295,8 +327,8 @@ src/lib/api.ts
 
 ### 5.2 后台 API
 
-- `GET /api/admin/state`：全部 works + latest state + logs。
-- `GET /api/admin/me`（可选）：返回 Access email。
+- `GET /admin/api/state`：全部 works + latest state + logs。
+- `GET /admin/api/me`（可选）：返回 Access email。
 - `Cache-Control: no-store`。
 
 ### 5.3 后台书架
@@ -319,7 +351,22 @@ src/lib/admin-api.ts
 - 顶部入口：添加作品。
 - `X-Robots-Tag: noindex`。
 
-**M3 验收**：未登录访问 `/admin` 会走 Access；`/api/admin/*` 未认证返回 401；书架能看到 283 本，且公开页仍只看得到 53 本公开作品。
+**M3 验收**：未登录访问 `/admin` 会走 Access；`/admin/api/*` 未认证返回 401；书架能看到 283 本，且公开页仍只看得到 53 本公开作品。
+
+### 5.4 M3 完成记录（dev）
+
+- `worker/middleware/access.ts`：`jose` + JWKS，校验 `iss`/`aud`/`exp`；Access 未配置时 503 fail closed；`DEV_AUTH_BYPASS=1` 仅 localhost
+- `worker/routes/admin.ts`：`/admin/api/state`、`/admin/api/me`
+- `worker/types.ts`：`ACCESS_TEAM_DOMAIN`、`ACCESS_AUD`、`DEV_AUTH_BYPASS`
+- `src/pages/admin/AdminLibrary.vue`：283 本书架、搜索、状态/类型/章节/年份/短评筛选、排序
+- `src/lib/admin-api.ts`、`src/lib/http.ts`
+- `wrangler.jsonc`：`run_worker_first` 增加 `/admin/api/*`
+- `test/api/admin.test.ts`：localhost bypass 200、非 localhost 无 JWT 401、公开 API 不受影响
+- `bun run test`：36 passed
+- 本地完整数据验证：`/admin/api/state` 返回 283 works / 372 logs
+- Cloudflare Access 已配置：team domain `annouimo.cloudflareaccess.com`，AUD 写入 `vars` / `previews.vars`
+- Access 边缘已验证：`/admin`、`/admin/api/state` 302 到 Access 登录；JWKS 2 keys；公开 API 仍 200
+- 待 push `dev` 后验证 Worker JWT 校验与书架页面
 
 ---
 
@@ -327,12 +374,12 @@ src/lib/admin-api.ts
 
 ### 6.1 API
 
-- `POST /api/admin/works/:id/progress`
+- `POST /admin/api/works/:id/progress`
   - `{ progress, loggedOn?, loggedAt?, totalProgress?, confirmBinary? }`
-- `POST /api/admin/works/:id/status`
+- `POST /admin/api/works/:id/status`
   - `{ status, loggedOn?, totalProgress?, confirmBinary? }`
-- `POST /api/admin/works/:id/rounds`
-- `DELETE /api/admin/logs/:id`（仅最新）
+- `POST /admin/api/works/:id/rounds`
+- `DELETE /admin/api/logs/:id`（仅最新）
 
 写入：
 
@@ -357,17 +404,33 @@ src/lib/admin-api.ts
 
 **M4 验收**：状态机覆盖全部转换；二元 409 流程可走通；撤销后当前状态回到上一条快照；点最后一格不会自动 done。
 
+### 6.3 M4 完成记录（dev）
+
+- `POST /admin/api/works/:id/progress` / `status` / `rounds`
+- `DELETE /admin/api/logs/:id`（校验必须是最新 log）
+- `GET /admin/api/works/:id`：后台进度页数据
+- `DomainError` 统一映射为 409/404/422 JSON
+- `src/pages/admin/AdminWorkProgress.vue`
+  - 章节格子，最后一格不自动 done
+  - 状态按钮不提供回到 wish
+  - 二元作品进入 reading 时弹章节数/保持二元
+  - 历史倒序，仅最新可撤销
+- 书架增加“进度”入口
+- `test/api/admin.test.ts`：14 个 admin API 测试
+- `bun run test`：46 passed
+- `bun run typecheck`、`bun run typecheck:test`、`bun run build` 通过
+
 ---
 
 ## 7. M5 — 添加/编辑 JSON
 
 ### 7.1 API
 
-- `POST /api/admin/works`
+- `POST /admin/api/works`
   - 校验 `shared/schemas.ts` 的 create schema。
   - `status=wish` 不建 log；`reading`/`done`/`paused`/`dropped` 创建初始 log。
   - 不接受 `id`、`legacy_id`、`created_at`。
-- `PATCH /api/admin/works/:id`
+- `PATCH /admin/api/works/:id`
   - 只允许元数据/评论。
   - 拒绝 status/progress/finished_on。
   - `total_progress` 降低到低于当前进度时 422。
@@ -394,6 +457,20 @@ src/components/WorkPreview.vue
 
 **M5 验收**：添加 wish/reading/done 三种作品；done 会创建初始 log；编辑不能绕过 log；重复标题给出警告。
 
+### 7.3 M5 完成记录（dev）
+
+- `POST /admin/api/works`：Zod create schema，201；wish 无 log，reading/done/paused/dropped 建初始 log
+- `PATCH /admin/api/works/:id`：只更新元数据/评论/total_progress，status/progress/finished_on 被 strict schema 拒绝
+- `src/pages/admin/AdminWorkNew.vue`
+- `src/pages/admin/AdminWorkEdit.vue`
+- `src/components/JsonEditor.vue`
+- `src/components/WorkPreview.vue`
+- JSON 格式化、解析、Zod 校验、预览、初始 log 预览、同名同作者警告
+- 书架增加“添加作品”和“编辑”入口
+- `test/api/admin.test.ts`：23 个 admin API 测试
+- `bun run test`：55 passed
+- `bun run typecheck`、`bun run typecheck:test`、`bun run build` 通过
+
 ---
 
 ## 8. M6 — 测试、安全、部署
@@ -408,7 +485,7 @@ src/components/WorkPreview.vue
 
 ### 8.2 安全
 
-- `/admin/*` 和 `/api/admin/*` 双重保护（Access + JWT 校验）。
+- `/admin*` 一个 Access 应用同时保护页面和 `/admin/api/*`；Worker 再做 JWT 校验。
 - 写接口校验 `Origin`。
 - Worker 响应加 CSP/HSTS/Referrer-Policy/X-Content-Type-Options。
 - `/admin/*` `noindex`。
@@ -426,6 +503,20 @@ src/components/WorkPreview.vue
 
 **M6 验收**：生产 URL 可公开访问；`/admin` 走 Access；关键 E2E 通过；D1 备份存在。
 
+### 8.4 M6 完成记录（dev）
+
+- `.github/workflows/ci.yml`：Bun 1.4.3 + Node 22，typecheck / typecheck:test / test / build
+- `worker/middleware/security.ts`：CSP、HSTS、Referrer-Policy、X-Content-Type-Options、X-Frame-Options
+- `worker/middleware/origin.ts`：写接口要求同源 `Origin`，无 Origin/跨域返回 403
+- `public/_headers`：静态资源 HSTS
+- `test/api/e2e.test.ts`：创建 done → 公开首页/详情 → 撤销 → 公开 404
+- `test/api/admin.test.ts`：安全头、noindex、Origin 拒绝/接受
+- `bun run test`：61 passed
+- 2026-10-27 D1 备份：`archive/backup/media-tracker-2026-10-27.sql`（gitignored，284 works / 372 logs）
+- 官方 export 因只读 token 被拒，备份由只读 `/query` 生成；生产前应再用写权限 token 做一次官方 export
+- Access 边缘已验证；push `dev` 后需再验证 preview 的 Worker JWT 与 E2E
+- 2026-10-27 检查：生产 `media-tracker.annouimo.com` 仍是旧 M0 Worker（`/api/public/home` 返回 501）；生产部署、最终 E2E 待 dev 合并/部署后验证
+
 ---
 
 ## 9. API / 路由清单
@@ -435,13 +526,13 @@ src/components/WorkPreview.vue
 | GET | `/api/health` | 公开 | 健康检查 |
 | GET | `/api/public/home` | 公开 | 首页三块数据 |
 | GET | `/api/public/works/:id` | 公开 | 公开摘要 + 完整记录 |
-| GET | `/api/admin/state` | Access | 后台全量 |
-| POST | `/api/admin/works` | Access | 创建作品 |
-| PATCH | `/api/admin/works/:id` | Access | 编辑元数据/评论 |
-| POST | `/api/admin/works/:id/progress` | Access | 记录进度 |
-| POST | `/api/admin/works/:id/status` | Access | 状态变更 |
-| POST | `/api/admin/works/:id/rounds` | Access | 开始新一轮 |
-| DELETE | `/api/admin/logs/:id` | Access | 撤销最新 log |
+| GET | `/admin/api/state` | Access | 后台全量 |
+| POST | `/admin/api/works` | Access | 创建作品 |
+| PATCH | `/admin/api/works/:id` | Access | 编辑元数据/评论 |
+| POST | `/admin/api/works/:id/progress` | Access | 记录进度 |
+| POST | `/admin/api/works/:id/status` | Access | 状态变更 |
+| POST | `/admin/api/works/:id/rounds` | Access | 开始新一轮 |
+| DELETE | `/admin/api/logs/:id` | Access | 撤销最新 log |
 
 页面：
 
@@ -474,7 +565,7 @@ src/components/WorkPreview.vue
 
 1. **D1 database_id**：`wrangler.jsonc` 仍是注释占位；M0 必须补。
 2. **DBX 直接建表 vs Wrangler migrations**：M0 跑一次 `wrangler d1 migrations apply` 记录 0001，避免后续迁移状态漂移。
-3. **Access + SPA**：后台建议独立入口整页加载；`/api/admin/*` 必须校验 JWT，不能只靠页面保护。
+3. **Access + SPA**：`/admin*` 由同一个 Access 应用保护；`/admin/api/*` 必须校验 JWT，不能只靠页面保护。
 4. **Access JWT 校验**：需要 team domain / AUD；JWKS 缓存。
 5. **公开详情范围**：已确认“摘要 + 可折叠完整记录”，完整记录公开。
 6. **二元转章节**：已确认进入 reading 时提示；已 done 不重读不提示；无章节书可显式保持二元。

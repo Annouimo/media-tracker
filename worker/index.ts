@@ -1,16 +1,15 @@
 import { Hono } from 'hono'
+import { DomainError } from './domain/errors'
+import { securityHeaders } from './middleware/security'
+import { adminRoutes } from './routes/admin'
+import { publicRoutes } from './routes/public'
+import type { AppEnv } from './types'
 
-/**
- * Worker bindings.
- *
- * `MEDIA_TRACKER_DB` is declared in `wrangler.jsonc` so every deploy includes
- * it. The binding name is part of our runtime contract.
- */
-export type Bindings = {
-  MEDIA_TRACKER_DB: D1Database
-}
+export type { Bindings } from './types'
 
-const app = new Hono<{ Bindings: Bindings }>()
+const app = new Hono<AppEnv>()
+
+app.use('*', securityHeaders)
 
 app.get('/api/health', async (c) => {
   if (!c.env.MEDIA_TRACKER_DB) {
@@ -43,7 +42,38 @@ app.get('/api/health', async (c) => {
   }
 })
 
-// Placeholder: business routes are implemented in later milestones.
+app.route('/api/public', publicRoutes)
+app.route('/admin/api', adminRoutes)
+
+// Placeholder for future public API routes.
 app.all('/api/*', (c) => c.json({ error: 'not_implemented' }, 501))
+
+app.onError((error, c) => {
+  if (error instanceof DomainError) {
+    return new Response(
+      JSON.stringify({
+        error: error.code,
+        message: error.message,
+        details: error.details,
+      }),
+      {
+        status: error.status,
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'cache-control': 'no-store',
+        },
+      },
+    )
+  }
+
+  console.error(error)
+  return c.json(
+    {
+      error: 'internal_error',
+      message: 'Internal server error',
+    },
+    500,
+  )
+})
 
 export default app
