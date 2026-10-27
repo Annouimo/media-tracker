@@ -1,3 +1,4 @@
+import { categoryForType, findCategory } from '../../shared/categories'
 import type {
   AdminState,
   Log,
@@ -245,9 +246,7 @@ export async function listPublicWorks(db: D1Database): Promise<WorkWithState[]> 
   return (await listWorksWithState(db)).filter(isPublicWork)
 }
 
-export async function publicHome(db: D1Database): Promise<PublicHome> {
-  const works = await listPublicWorks(db)
-
+function splitPublicWorks(works: WorkWithState[]): PublicHome {
   const byActivity = (a: WorkWithState, b: WorkWithState): number =>
     (b.state.loggedOn ?? '').localeCompare(a.state.loggedOn ?? '') ||
     (b.state.loggedAt ?? 0) - (a.state.loggedAt ?? 0)
@@ -269,6 +268,23 @@ export async function publicHome(db: D1Database): Promise<PublicHome> {
       .sort(byFinished)
       .map(toPublicWork),
   }
+}
+
+/**
+ * Public lists for one registered category. Returns null for an unregistered
+ * slug so the route can answer 404.
+ */
+export async function publicCategory(
+  db: D1Database,
+  slug: string,
+): Promise<PublicHome | null> {
+  const category = findCategory(slug)
+  if (!category) return null
+
+  const works = (await listPublicWorks(db)).filter(
+    (work) => categoryForType(work.type)?.slug === category.slug,
+  )
+  return splitPublicWorks(works)
 }
 
 export async function getPublicWork(

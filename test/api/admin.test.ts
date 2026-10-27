@@ -41,8 +41,8 @@ describe('admin API access', () => {
     expect(response.headers.get('cache-control')).toContain('no-store')
 
     const state = (await response.json()) as AdminState
-    expect(state.works).toHaveLength(5)
-    expect(state.logs).toHaveLength(8)
+    expect(state.works).toHaveLength(6)
+    expect(state.logs).toHaveLength(9)
   })
 
   it('rejects non-local requests without an Access JWT', async () => {
@@ -58,7 +58,7 @@ describe('admin API access', () => {
   })
 
   it('does not protect the public API', async () => {
-    const response = await SELF.fetch('https://example.com/api/public/home')
+    const response = await SELF.fetch('https://example.com/api/public/categories/book')
     expect(response.status).toBe(200)
   })
 

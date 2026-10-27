@@ -3,7 +3,7 @@
 一个单用户的阅读档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人书架**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M1–M6 已完成并部署到生产（`media-tracker.annouimo.com`）
+- 当前状态：M1–M6 已完成并部署到生产（`media-tracker.annouimo.com`）；M7 分类导航在 `dev` 分支
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -15,6 +15,7 @@
 - 公开页的“读过”= **曾经读完**，不是“最新状态为读完”；开始重读不会让作品从公开页消失。
 - 公开详情页默认只展示摘要；完整历史放在同页可折叠的“完整记录”区域，公开可看，搁置/弃读可以暴露。
 - 公开首页第二部分是 2–3 列标题列表（手机单列），按读完时间从新到旧排序。
+- 公开页按分类切换：顶部导航就是分类列表（图书 / 教材），每个分类一个独立 URL，页面版式相同；分类在 `shared/categories.ts` 注册。
 - 私有管理面放在 `/admin`，由 Cloudflare Access 保护；包含全部 283 本，包括想读、在读、搁置、弃读。
 - 删除 `cover_url`、`rating`、`tags`；新增 `short_review`（纯文本）和 `long_review_url`（博客链接）。
 - `works` 不保存 `status`；状态作为快照写入 `logs`，最新一条 log 就是当前状态。
@@ -185,15 +186,15 @@ WHERE w.deleted_at IS NULL;
 
 ### 2.2 公开 API
 
-#### `GET /api/public/home`
+#### `GET /api/public/categories/:slug`
 
-返回公开首页所需的全部数据：
+返回**一个分类**的公开页面数据。`slug` 来自 `shared/categories.ts`，当前是 `book` / `textbook`；未注册的 slug 返回 404。
 
 ```ts
 {
-  reading: PublicWork[],   // 当前 status = reading，按最近活动倒序
-  reviews: PublicWork[],   // 曾经读完 + 有短评，按 finished_on 倒序
-  archive: PublicWork[]    // 曾经读完 + 没有短评，按 finished_on 倒序
+  reading: PublicWork[],   // 该分类下 status = reading，按最近活动倒序
+  reviews: PublicWork[],   // 该分类下曾经读完 + 有短评，按 finished_on 倒序
+  archive: PublicWork[]    // 该分类下曾经读完 + 没有短评，按 finished_on 倒序
 }
 ```
 
@@ -217,7 +218,7 @@ WHERE w.deleted_at IS NULL;
 }
 ```
 
-当前数据量下，公开首页一次返回全部公开作品（约 51 本读过 + 2 本在读），加 ETag/缓存；搜索在前端做，不单独建搜索接口。
+每个分类一次返回该分类的全部公开作品（当前：图书 49 本、教材 4 本），加 ETag/缓存；搜索在前端做，不单独建搜索接口。`/api/public/home` 已移除。
 
 #### `GET /api/public/works/:id`
 
@@ -323,7 +324,9 @@ WHERE w.deleted_at IS NULL;
 
 | 路由 | 权限 | 内容 |
 |---|---|---|
-| `/` | 公开 | 当前在读短列表 + 短评区 + 读过标题区 + 搜索 |
+| `/` | 公开 | 重定向到第一个分类（`/books`） |
+| `/books` | 公开 | 图书分类页：当前在读 + 短评区 + 读过标题区 + 搜索 |
+| `/textbooks` | 公开 | 教材分类页；版式与 `/books` 相同 |
 | `/works/:id` | 公开 | 公开详情（摘要 + 可折叠完整记录） |
 | `/admin` | Access | 全部作品书架：搜索、筛选、排序、入口 |
 | `/admin/works/new` | Access | JSON 添加作品 |
@@ -332,33 +335,37 @@ WHERE w.deleted_at IS NULL;
 
 旧 URL 不保留。后台建议作为独立入口整页加载，避免 SPA 客户端路由绕过 Access。
 
-### 3.2 公开首页
+新增分类只需在 `shared/categories.ts` 增加一行（`slug` / `label` / `path` / `type`）：路由、顶部导航和公开 API 都从这张表读取；作品的 `works.type` 使用同一个 `type` 值。
 
-结构从上到下：
+### 3.2 公开分类页
+
+每个分类页（`/books`、`/textbooks`）共用一套版式，结构从上到下：
 
 1. **当前在读**
    - 一行：`在读：书名 · 书名`
-   - 只显示当前 `status = reading` 的作品，按最近活动倒序；通常 1–2 本。
+   - 只显示该分类下当前 `status = reading` 的作品，按最近活动倒序；通常 1–2 本。
    - 没有在读作品时整行隐藏。
    - 每本书链接到 `/works/:id`。
 
 2. **短评区**
-   - 只显示“曾经读完 + `short_review` 非空”的作品。
-   - 每行：书名链接 + 下方短评（纯文本，保留换行；首页最多显示 3 行，详情全文）。
+   - 只显示该分类下“曾经读完 + `short_review` 非空”的作品。
+   - 每行：书名链接 + 下方短评（纯文本，保留换行；页面最多显示 3 行，详情全文）。
    - 行间 `1px solid var(--border)`，不使用卡片。
    - 按 `finished_on` 倒序。
    - 没有短评时整个区块隐藏。
 
 3. **读过（其余）**
-   - 只显示“曾经读完 + 没有短评”的作品。
+   - 只显示该分类下“曾经读完 + 没有短评”的作品。
    - 2–3 列自适应标题列表；手机单列。
    - 每项只有书名链接，不使用封面、作者、年份、评分。
    - 按 `finished_on` 倒序。
 
 4. **搜索**
-   - 首页顶部或列表上方一个轻量输入框。
-   - 客户端过滤书名、作者、短评；同时作用于短评区和标题区。
-   - 无结果时显示极简空状态。
+   - 列表上方一个轻量输入框。
+   - 客户端过滤当前分类的书名、作者、短评；同时作用于短评区和标题区。
+   - 切换分类时清空关键词；无结果时显示极简空状态。
+
+顶部菜单不再有“首页”，直接是分类链接；当前分类带下划线，logo 回到 `/` 后重定向到第一个分类。分类页之间切换是独立路由，浏览器前进/后退正常。
 
 视觉：
 
@@ -381,6 +388,7 @@ WHERE w.deleted_at IS NULL;
   - 显示日期、状态、进度；允许暴露 `paused` / `dropped`。
   - 不显示任何私有备注（当前模型也没有私有备注）。
 - 不使用封面。
+- 返回链接指向作品所属分类（如「← 返回教材」）；未登记类型回退到首页。
 
 ### 3.4 后台书架 `/admin`
 
@@ -489,7 +497,7 @@ WHERE w.deleted_at IS NULL;
 │   ├── components/
 │   ├── lib/
 │   └── pages/           # PublicHome / PublicWork / admin
-├── shared/              # 共享类型、Zod schema、日期工具
+├── shared/              # 共享类型、Zod schema、日期工具、分类注册表
 ├── worker/              # Cloudflare Worker / API
 │   ├── index.ts
 │   ├── domain/          # 状态机、日期、领域错误
@@ -558,7 +566,7 @@ bun run typecheck:test
 
 CI 在 `.github/workflows/ci.yml`：Bun 1.4.3 + Node 22，执行 typecheck、typecheck:test、test、build。
 
-M1–M6 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（5 本 / 8 条 log），不接触生产数据。当前 61 个测试全部通过。
+M1–M6 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（6 本 / 9 条 log），不接触生产数据。当前 69 个测试全部通过。
 
 ### 5.4 D1
 

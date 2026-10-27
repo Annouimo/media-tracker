@@ -1,13 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
+import { findCategory } from '../../shared/categories'
 import type { PublicHome as PublicHomeData, PublicWork } from '../../shared/types'
-import { getPublicHome } from '../lib/api'
+import { getPublicCategory } from '../lib/api'
+
+const props = defineProps<{ category: string }>()
 
 const data = ref<PublicHomeData | null>(null)
 const loading = ref(true)
 const error = ref('')
 const query = ref('')
+
+const currentCategory = computed(() => findCategory(props.category))
+const categoryLabel = computed(() => currentCategory.value?.label ?? '')
 
 const normalizedQuery = computed(() => query.value.trim().toLowerCase())
 
@@ -26,21 +32,43 @@ const hasResults = computed(
 )
 const isSearching = computed(() => normalizedQuery.value.length > 0)
 
-onMounted(async () => {
-  document.title = '我的阅藏'
+async function load(slug: string): Promise<void> {
+  loading.value = true
+  error.value = ''
+  data.value = null
+  query.value = ''
+
+  const category = findCategory(slug)
+  if (!category) {
+    error.value = '未知分类'
+    loading.value = false
+    return
+  }
+
+  document.title = `${category.label} · 我的阅藏`
   try {
-    data.value = await getPublicHome()
+    data.value = await getPublicCategory(slug)
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '加载失败'
   } finally {
     loading.value = false
   }
-})
+}
+
+watch(
+  () => props.category,
+  (slug) => {
+    void load(slug)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
   <div class="home">
-    <h1 class="sr-only">我的阅藏</h1>
+    <h1 class="sr-only">
+      {{ categoryLabel ? `${categoryLabel} · 我的阅藏` : '我的阅藏' }}
+    </h1>
 
     <p v-if="loading" class="empty">正在加载…</p>
     <p v-else-if="error" class="empty" role="alert">{{ error }}</p>

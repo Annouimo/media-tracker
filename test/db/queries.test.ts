@@ -6,13 +6,13 @@ import {
   getWorkWithState,
   listLogsForWork,
   listWorksWithState,
-  publicHome,
+  publicCategory,
 } from '../../worker/db/queries'
 
 describe('D1 queries', () => {
   it('lists the fixture works with derived state', async () => {
     const works = await listWorksWithState(env.MEDIA_TRACKER_DB)
-    expect(works).toHaveLength(5)
+    expect(works).toHaveLength(6)
 
     const byId = new Map(works.map((work) => [work.id, work]))
     expect(byId.get('w-wish')?.state.status).toBe('wish')
@@ -24,15 +24,22 @@ describe('D1 queries', () => {
     expect(byId.get('w-reread')?.state.finishedOn).toBe('2026-09-02')
   })
 
-  it('splits the public home into reading, reviews, and archive', async () => {
-    const home = await publicHome(env.MEDIA_TRACKER_DB)
-    expect(home.reading.map((work) => work.title)).toEqual(['Reread Book', 'Reading Book'])
-    expect(home.reviews.map((work) => work.title)).toEqual(['Done Book'])
-    expect(home.archive.map((work) => work.title)).toEqual(['Reread Book'])
+  it('splits each category into reading, reviews, and archive', async () => {
+    const books = await publicCategory(env.MEDIA_TRACKER_DB, 'book')
+    expect(books?.reading.map((work) => work.title)).toEqual(['Reread Book', 'Reading Book'])
+    expect(books?.reviews.map((work) => work.title)).toEqual(['Done Book'])
+    expect(books?.archive.map((work) => work.title)).toEqual(['Reread Book'])
 
-    expect(home.reviews[0]?.is_read).toBe(true)
-    expect(home.reading.find((work) => work.id === 'w-reread')?.is_read).toBe(true)
-    expect(home.reading.find((work) => work.id === 'w-reading')?.is_read).toBe(false)
+    expect(books?.reviews[0]?.is_read).toBe(true)
+    expect(books?.reading.find((work) => work.id === 'w-reread')?.is_read).toBe(true)
+    expect(books?.reading.find((work) => work.id === 'w-reading')?.is_read).toBe(false)
+
+    const textbooks = await publicCategory(env.MEDIA_TRACKER_DB, 'textbook')
+    expect(textbooks?.reading).toEqual([])
+    expect(textbooks?.reviews).toEqual([])
+    expect(textbooks?.archive.map((work) => work.title)).toEqual(['Done Textbook'])
+
+    expect(await publicCategory(env.MEDIA_TRACKER_DB, 'nope')).toBeNull()
   })
 
   it('returns public detail with chronological logs', async () => {
@@ -50,8 +57,8 @@ describe('D1 queries', () => {
     expect(logs.map((log) => log.seq)).toEqual([1, 2, 3])
 
     const admin = await getAdminState(env.MEDIA_TRACKER_DB)
-    expect(admin.works).toHaveLength(5)
-    expect(admin.logs).toHaveLength(8)
+    expect(admin.works).toHaveLength(6)
+    expect(admin.logs).toHaveLength(9)
   })
 
   it('returns null for a missing work', async () => {

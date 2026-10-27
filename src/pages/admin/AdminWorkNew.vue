@@ -149,6 +149,7 @@ onMounted(async () => {
 
         <div class="help">
           <p>字段：title、creator、release_year、type、total_progress、status、short_review、long_review_url。</p>
+          <p>type 需要先在 <code>shared/categories.ts</code> 注册，公开页才会出现（当前：Book / Textbook）。</p>
           <p>status：wish / reading / done / paused / dropped。reading 且 total_progress=1 时，需要填写章节数或加 <code>"confirm_binary": true</code>。</p>
           <p>不接受 id、legacy_id、created_at；finished_on 只用于 done。</p>
         </div>
