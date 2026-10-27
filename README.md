@@ -476,8 +476,11 @@ WHERE w.deleted_at IS NULL;
 ├── worker/              # Cloudflare Worker / API
 │   └── index.ts
 ├── public/              # 静态资源、_headers、favicon
-├── migrations/          # D1 migrations（尚未创建）
-├── archive/             # 旧代码/旧数据（gitignored）
+├── migrations/          # D1 migrations
+│   └── 0001_init.sql
+├── scripts/             # 一次性数据转换/迁移脚本
+│   └── transform-legacy.ts
+├── archive/             # 旧代码/旧数据 + archive/import/（gitignored）
 ├── reference/           # PaperMod 参考主题（gitignored）
 ├── wrangler.jsonc
 ├── vite.config.ts
@@ -535,23 +538,34 @@ DEV_AUTH_BYPASS=1
 
 旧数据迁移的完整对账规则在 `archive/MIGRATION_RECONCILIATION.md`（本地文件，按 `.gitignore` 不进入 Git）。
 
+转换后的 DBX 导入文件在 `archive/import/`（同样不进 Git）：
+
+- `works.json`：283 行
+- `logs.json`：372 行（295 原始 + 77 条状态事件）
+- `works.sql` / `logs.sql`：literal INSERT 兜底
+- `manifest.json`：条数、SHA-256、异常、校验结果
+- `README.md`：DBX 导入步骤、必须关闭 “Empty string as NULL”、导入顺序和校验 SQL
+
 关键数字：
 
-- works 283、logs 295；迁移后 logs 约 372（295 + 77 条状态事件）。
+- works 283、logs 295；迁移后 logs 372（295 + 77 条状态事件）。
 - 旧状态：wish 204、reading 2、done 51、paused 26、dropped 0。
 - 77 条状态事件中：10 条使用真实 `updated` 时间，67 条为历史推断（`inferred=1`，只有日期）。
-- 151 条日志只有日期；52 条缺 `added_at`；244 条有 `legacy_id`（1..245，缺 241）。
+- 151 条日志只有日期；迁移后 `logged_at IS NULL` 共 218 条。
+- 52 条缺 `added_at`；244 条有 `legacy_id`（1..245，缺 241）。
 - 4 条 `total_snapshot` 与当前 `total_progress` 不一致；20 组同日 0/1 日志；0 条孤儿日志。
 
 建议顺序：
 
-1. 建 D1、写迁移、导入 283/295、跑对账报告；
-2. 公开首页只读；
-3. 公开详情 + 完整记录；
-4. Access + `/admin` 书架；
-5. 进度页 / 状态机 / 撤销；
-6. 添加/编辑 JSON；
-7. 搜索、响应式、测试、上线。
+1. 建 D1、执行 `migrations/0001_init.sql`；
+2. 用 DBX 导入 `works.json`，再导入 `logs.json`（或走 SQL 兜底）；
+3. 跑 `archive/import/README.md` 的校验 SQL；
+4. 公开首页只读；
+5. 公开详情 + 完整记录；
+6. Access + `/admin` 书架；
+7. 进度页 / 状态机 / 撤销；
+8. 添加/编辑 JSON；
+9. 搜索、响应式、测试、上线。
 
 ---
 
@@ -560,4 +574,4 @@ DEV_AUTH_BYPASS=1
 - `archive/` 和 `reference/` 只保留在本地，不进入 Git。
 - 旧 URL 不迁移；旧 id 保留在数据库里，但新路由使用新的路径。
 - 状态是 log 快照，`works` 不保存 `status`。
-- 公开详情页的“摘要 + 可折叠完整记录”是对“公开页展示完整历史”和“公开详情页只展示摘要”两个要求的折中；如果希望完整记录完全不公开，只需把折叠区从公开 API 中移除。
+- 公开详情页已确认采用“摘要 + 可折叠完整记录”；完整记录公开，允许暴露搁置/弃读。
