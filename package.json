@@ -11,12 +11,7 @@
     "preview": "bun run build && vite preview",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
     "deploy": "bun run build && wrangler deploy",
-    "deploy:ci": "wrangler deploy",
-    "db:migrate:local": "bun run scripts/d1.ts migrate:local",
-    "db:migrate:remote": "bun run scripts/d1.ts migrate:remote",
-    "db:seed:local": "bun run scripts/d1.ts seed:local",
-    "db:verify:local": "bun run scripts/d1.ts verify:local",
-    "db:verify:remote": "bun run scripts/d1.ts verify:remote"
+    "deploy:ci": "wrangler deploy"
   },
   "dependencies": {
     "hono": "^4.13.14",

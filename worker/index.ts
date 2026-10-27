@@ -3,18 +3,18 @@ import { Hono } from 'hono'
 /**
  * Worker bindings.
  *
- * The D1 binding is injected from deployment/build environment variables by
- * `vite.config.ts`; it is never hardcoded in `wrangler.jsonc`.
+ * `MEDIA_TRACKER_DB` is a D1 binding configured in the Cloudflare dashboard. The binding
+ * name is part of our runtime contract; the database ID is not stored here.
  */
 export type Bindings = {
-  DB: D1Database
+  MEDIA_TRACKER_DB: D1Database
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/api/health', async (c) => {
   try {
-    const row = await c.env.DB.prepare('SELECT 1 AS ok').first<{ ok: number }>()
+    const row = await c.env.MEDIA_TRACKER_DB.prepare('SELECT 1 AS ok').first<{ ok: number }>()
     return c.json({
       ok: row?.ok === 1,
       db: 'ok',

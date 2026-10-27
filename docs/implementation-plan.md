@@ -15,10 +15,12 @@
 - `scripts/transform-legacy.ts`：旧数据转换脚本。
 - DBX 已导入旧数据（用户确认完成）。
 - `bun run typecheck`、`bun run build` 通过。
+- 远程 D1 已完成只读校验（283/372 等，见 `archive/import/verification.txt`）。
+- Node 24 已安装；`bun run dev:node` 可作为本地请求转发的 fallback。
 
 尚未完成：
 
-- `wrangler.jsonc` 里的 D1 binding（目前是注释占位）。
+- 在 Cloudflare Dashboard 绑定 `MEDIA_TRACKER_DB` 并重新部署，验证 `/api/health`。
 - 任何 API 路由（`/api/*` 目前只有 `/api/health` 和 501 占位）。
 - 公开首页 / 公开详情。
 - Cloudflare Access 与 `/admin`。
@@ -71,27 +73,19 @@
 
 目标：把“已经导入的数据”变成可复现、可本地开发、可部署的基线。
 
-### 2.1 D1 binding（环境变量注入）
+### 2.1 D1 binding（Dashboard `MEDIA_TRACKER_DB`）
 
 - [x] D1 数据库已由 DBX 导入：`media-tracker-db`。
-- [x] D1 信息不写死在 `wrangler.jsonc`；由 `vite.config.ts` 从以下变量注入：
-  - `D1_DATABASE_ID`
-  - `D1_DATABASE_NAME`
-  - `PUBLIC_HOST`
-- [x] `worker/index.ts` 的 `Bindings.DB` 已改为必填，并加了带 DB 检查的 `/api/health`。
-- [x] 本地 `.env.local`（gitignored）提供 D1 变量；`.env.example` 提供占位模板。
-- [x] `scripts/wrangler-config.ts` 生成 gitignored 的 `wrangler.generated.jsonc`，供 Wrangler CLI 使用。
-- [x] 构建时 Vite 插件生成 `dist/media_tracker/wrangler.json`，其中包含 D1 binding；已用 `PUBLIC_HOST` 模拟 Workers Builds 验证 custom domain route。
+- [x] D1 不写入 `wrangler.jsonc`，也不使用环境变量传 ID。
+- [x] Worker 通过 dashboard binding 对象访问：`env.MEDIA_TRACKER_DB`。
+- [x] `worker/index.ts` 的 `Bindings.MEDIA_TRACKER_DB` 已改为必填，并加了带 DB 检查的 `/api/health`。
+- [ ] 在 Cloudflare Dashboard → Worker → Settings → Bindings 添加 D1 binding：
+  - Variable name: `MEDIA_TRACKER_DB`
+  - Database: `media-tracker-db`
 
-如果 DBX 是直接执行 DDL，而不是走 Wrangler migrations，运行一次：
+> 自动部署使用 `wrangler deploy`。部署后必须验证 `/api/health` 返回 `{"ok":true,"db":"ok"}`，确认 dashboard binding 没有被 Wrangler 覆盖。
 
-```bash
-bun run db:migrate:remote
-```
-
-`0001_init.sql` 里是 `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`，不会破坏已有表；它会把 0001 记录到 `d1_migrations`，避免以后迁移状态漂移。
-
-> 远程 D1 已用只读 token + account ID 通过 REST `/query` 校验。当前远程库的表是 `works` / `logs` / `import_batches`，**没有 `d1_migrations`**。第一次未来 schema 变更前，需要用可写 token 跑一次 `bun run db:migrate:remote`，把 0001 记录进去。
+如果 DBX 是直接执行 DDL，而不是走 Wrangler migrations，未来 schema 变更前需要单独跑一次 migration（DBX 或显式 Wrangler 配置）。当前远程库没有 `d1_migrations`。
 
 ### 2.2 远程基线校验
 
@@ -115,32 +109,13 @@ bun run db:migrate:remote
 | status events | 77 |
 | chapter / binary | 40 / 243 |
 
-当前状态（最新 seq）：
+### 2.3 本地 D1 / 测试数据
 
-```sql
-SELECT COALESCE(l.status, 'wish') AS status, COUNT(*)
-FROM works w
-LEFT JOIN logs l
-  ON l.work_id = w.id
- AND l.seq = (SELECT MAX(seq) FROM logs WHERE work_id = w.id)
-WHERE w.deleted_at IS NULL
-GROUP BY status;
--- wish 204 / reading 2 / done 51 / paused 26 / dropped 0
-```
+生产 D1 不通过环境变量或本地脚本连接。本地开发/测试使用独立的 D1 binding，具体在 M1 的 Vitest/Workers 测试配置里建立：
 
-### 2.3 本地 D1
-
-本地已是 `.wrangler/state` 下的独立 D1，不连远程库：
-
-```bash
-bun run db:migrate:local
-bun run db:seed:local
-```
-
-- `db:seed:local` 从 `archive/import/works.sql` / `logs.sql` 导入 283/372。
-- 已在本机验证：works 283、logs 372、date-only 218、inferred 67。
-- `archive/import/*` 是 gitignored 的本地文件；CI 不用它们。
-- CI / 测试使用 `tests/fixtures/seed.sql`（小规模、脱敏）。
+- 使用 `tests/fixtures/seed.sql`（小规模、脱敏），不使用 283 本个人数据。
+- `archive/import/*` 是 gitignored 的本地文件，不进入 CI。
+- 远程数据只通过 DBX / Cloudflare 控制台维护。
 
 ### 2.4 自定义域名与部署
 
@@ -158,13 +133,13 @@ Workers Builds 目标配置：
 |---|---|
 | Build command | `bun run build` |
 | Deploy command | `bun run deploy:ci` |
-| Build variables | `D1_DATABASE_ID`、`D1_DATABASE_NAME`、`PUBLIC_HOST` |
+| Build variables | `PUBLIC_HOST`（D1 不在 build variables，走 Dashboard `MEDIA_TRACKER_DB`） |
 
 ### 2.5 本地开发运行时
 
 Cloudflare 当前的 Miniflare 请求转发依赖 undici dispatcher，Bun 的 `fetch()` 会忽略它：
 
-- `bun run build`、`bun run typecheck`、D1 CLI 可用 Bun；
+- `bun run build`、`bun run typecheck` 可用 Bun；
 - `vite dev` / `wrangler dev` 的请求转发需要 Node；
 - 已提供 `bun run dev:node`（`node node_modules/vite/bin/vite.js`）作为 fallback。
 
@@ -175,7 +150,7 @@ Cloudflare 当前的 Miniflare 请求转发依赖 undici dispatcher，Bun 的 `f
 - [ ] 后续 E2E 再加 `@playwright/test`。
 - [ ] `tsconfig.json` / `tsconfig.worker.json` 都 include `shared/**/*.ts`。
 
-**M0 验收**：本地和远程 D1 都已跑出 283/372、79 个有日志作品、204/2/51/26/0；D1/子域环境变量注入与 Workers Builds 构建已配置；Access 在 M3；`d1_migrations` 待用可写 token 补记录。
+**M0 验收**：远程 D1 已跑出 283/372、79 个有日志作品、204/2/51/26/0；Worker 已改用 Dashboard `MEDIA_TRACKER_DB`；子域由 `PUBLIC_HOST` 注入；部署验证待重新绑定/重新部署；Access 在 M3。
 
 ---
 
