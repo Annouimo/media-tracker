@@ -359,20 +359,8 @@ watch(
     font-size: 22px;
   }
 
-  .review-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.15rem;
-  }
-
   .review-title {
-    max-width: 100%;
     font-size: 17px;
-  }
-
-  .review-text {
-    flex: none;
-    width: 100%;
   }
 
   .archive-grid {
