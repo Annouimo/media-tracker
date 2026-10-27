@@ -239,22 +239,19 @@ ep.15 时间线缺失，ep.23(β)/ep.25 特别篇跳过，最后按收藏进度�
 
 | 文件 | 内容 | 大小 |
 |---|---|---:|
-| `works.json` | 280 行，正好是 `works` 表字段 + `source` / `external_id` | 111KB |
+| `works.json` | 280 行，正好是 `works` 表字段 | 96KB |
 | `logs.json` | 1219 行，正好是 `logs` 表字段 | 391KB |
 | `events.json` | 1266 条原始解析事件（审计用，含 `bgm_item` / `bgm_text`） | 358KB |
-| `import.sql` | works + logs + import_batches | 428KB |
-| `works.sql` / `logs.sql` | 分表 SQL | 95KB / 332KB |
+| `import.sql` | works + logs + import_batches | 416KB |
+| `works.sql` / `logs.sql` | 分表 SQL | 83KB / 332KB |
 | `manifest.json` | 条数、状态分布、覆盖率、异常、SHA-256 | 1.5KB |
-| `README.md` | 手动导入 / 校验 / 回滚步骤 | 1.8KB |
+| `README.md` | 手动导入 / 校验 / 回滚步骤 | 2.0KB |
 
 原始 HTML 在 `archive/bangumi/raw/`（时间线 2.5MB + 条目章节 1.9MB + 收藏 JSON），共约 4.9MB。之前的 Python 原型在 `archive/bangumi/prototype-v3/`，只作为分析留档，不是本次导入源。
 
 ### 6.1 works 字段
 
-`works.json` 只保留会写进 DB 的字段，外加来源：
-
-- `source='bangumi'`
-- `external_id={subject_id}`
+`works.json` 只保留会写进 DB 的字段，不新增列：
 
 字段映射：
 
@@ -272,9 +269,9 @@ created_at      = 导入时间
 updated_at      = 收藏 updated_at
 legacy_id       = NULL
 deleted_at      = NULL
-source          = 'bangumi'
-external_id     = {subject_id}
 ```
+
+`works.id` 用 `bgm-{subject_id}`，已经能看出是 Bangumi 的数据；没有单独的来源字段。
 
 评分没有进 DB；原始 `rate` 仍保留在 `archive/bangumi/raw/collections` 的收藏 JSON 里。
 
@@ -314,24 +311,9 @@ created_at      = 导入时间
 
 ### 7.2 Schema
 
-建议 0002：
+不新增字段。`works.id` 使用 `bgm-{subject_id}`，已经能识别来源；批次来源记录在 `import_batches.source='bangumi-anime'`。
 
-```sql
-ALTER TABLE works ADD COLUMN source TEXT NOT NULL DEFAULT 'local';
-ALTER TABLE works ADD COLUMN external_id TEXT;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_works_source_external
-  ON works(source, external_id)
-  WHERE external_id IS NOT NULL;
-```
-
-可选：
-
-```sql
-ALTER TABLE works ADD COLUMN rating INTEGER;      -- 0–10
-ALTER TABLE works ADD COLUMN source_url TEXT NOT NULL DEFAULT '';
-```
-
-`logs.source` 仍用 `'migration'`，不需要改 CHECK。
+之前设想的 `works.source` / `external_id` 最终没有采用，迁移 0002 已移除。
 
 ### 7.3 导入顺序
 
@@ -414,11 +396,11 @@ ALTER TABLE works ADD COLUMN source_url TEXT NOT NULL DEFAULT '';
 
 | 验证 | 结果 |
 |---|---|
-| 干净 SQLite：0001 + 0002 + `import.sql` | 280 works / 1219 logs / 166 public |
+| 干净 SQLite：0001 + `import.sql` | 280 works / 1219 logs / 166 public |
 | 本地 D1（fresh `--persist-to`） | 280 works / 1219 logs / 43 inferred |
 | 重复执行 `import.sql` | 280 / 1219 / 1 batch（`INSERT OR IGNORE` 幂等） |
 | `bun run typecheck` | 通过 |
-| `bun run test` | 69 passed |
+| `bun run test` | 79 passed |
 | `bun run build` | 通过 |
 
 手动步骤：
@@ -429,26 +411,33 @@ ALTER TABLE works ADD COLUMN source_url TEXT NOT NULL DEFAULT '';
    ```
    如果 export 需要写权限 token，先在 Cloudflare 建一个 D1 Edit token 并设置 `CLOUDFLARE_API_TOKEN`；或者用 DBX 全量导出。
 
-2. **应用 0002**
-   ```bash
-   bunx wrangler d1 migrations apply media-tracker-db --remote
-   ```
-
-3. **导入**
+2. **导入**
    ```bash
    bunx wrangler d1 execute media-tracker-db --remote --file=archive/bangumi/import/import.sql
    ```
    或者用 DBX 执行同一个 SQL 文件。如果 `import.sql` 太大，按顺序跑 `works.sql`、`logs.sql`；`import_batches` 可省略或用 manifest 的 hash 手工补。
 
-4. **校验**
+3. **校验**
    ```bash
    bunx wrangler d1 execute media-tracker-db --remote --file=archive/bangumi/import/verify.sql
    ```
    期望：`bangumi_works=280`、`bangumi_logs=1219`、`public_works=166`、`inferred_logs=43`、孤儿/重复 seq/`progress > total` 均为 0；总 `works=564`、`logs=1591`、`import_batches=1`。
 
-5. **验证公开页**
+4. **验证公开页**
    - `/api/public/categories/anime` → 166
    - `/anime` 页面 → 163 条“看过” + 3 条“曾看完但搁置/弃读”；114 条只在后台。
+
+### 生产验证（2026-10-27）
+
+- `/api/health` → 200
+- `/api/public/categories/anime` → 200，archive **166**（其中 **20 条 progress=0**）
+- `/api/public/categories/book` → 49（reading 2 / reviews 1 / archive 46）
+- `/api/public/categories/textbook` → 4
+- `/api/public/works/bgm-400602` → 30 条 log，28/28，`finished_on=2024-03-24`
+- `/api/public/works/bgm-329906` → progress 0 / 25，公开页文案为「已看完（进度未记录）」
+- 生产 JS bundle 含「还没有看过作品」「标记看到第」「已看完（进度未记录）」等动画文案
+- `/anime`、`/works/bgm-400602` → 200；`/admin` → 302（Cloudflare Access）
+- 生产 Schema 仍是 0001；没有 `works.source` / `external_id`，也没有应用 0002
 
 失败回滚：用第 1 步的备份恢复；不要只删 `import_batches`。
 

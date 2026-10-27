@@ -1,9 +1,9 @@
 # 我的阅藏 / media-tracker
 
-一个单用户的阅读档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人书架**。
+一个单用户的阅读 / 动画档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人作品库**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M1–M8 已完成并部署到生产（`media-tracker.annouimo.com`）
+- 当前状态：M1–M9 已完成并部署到生产（`media-tracker.annouimo.com`）
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -15,8 +15,9 @@
 - 公开页的“读过”= **曾经读完**，不是“最新状态为读完”；开始重读不会让作品从公开页消失。
 - 公开详情页默认只展示摘要；完整历史放在同页可折叠的“完整记录”区域，公开可看，搁置/弃读可以暴露。
 - 公开首页第二部分是 2–3 列标题列表（手机单列），按读完时间从新到旧排序。
-- 公开页按分类切换：顶部导航就是分类列表（图书 / 教材），每个分类一个独立 URL，页面版式相同；分类在 `shared/categories.ts` 注册。
-- 私有管理面放在 `/admin`，由 Cloudflare Access 保护；包含全部 283 本，包括想读、在读、搁置、弃读。
+- 公开页按分类切换：顶部导航就是分类列表（图书 / 教材 / 动画），每个分类一个独立 URL，页面版式相同；分类和分类文案在 `shared/categories.ts` / `shared/category-copy.ts` 注册。
+- 分类文案按类别切换：图书用「读 / 章 / 本」，动画用「看 / 话 / 部」；状态、进度、按钮、后台表单都跟随作品类型。
+- 私有管理面放在 `/admin`，由 Cloudflare Access 保护；包含全部 564 条作品（2026-10-27），包括想看、在看、搁置、弃看。
 - 后台使用独立布局和顶部管理导航；公开站 header 不出现在 `/admin`。admin 路由懒加载，公开首屏不加载后台代码。
 - 删除 `cover_url`、`rating`、`tags`；新增 `short_review`（纯文本）和 `long_review_url`（博客链接）。
 - `works` 不保存 `status`；状态作为快照写入 `logs`，最新一条 log 就是当前状态。
@@ -189,7 +190,7 @@ WHERE w.deleted_at IS NULL;
 
 #### `GET /api/public/categories/:slug`
 
-返回**一个分类**的公开页面数据。`slug` 来自 `shared/categories.ts`，当前是 `book` / `textbook`；未注册的 slug 返回 404。
+返回**一个分类**的公开页面数据。`slug` 来自 `shared/categories.ts`，当前是 `book` / `textbook` / `anime`；未注册的 slug 返回 404。
 
 ```ts
 {
@@ -219,7 +220,7 @@ WHERE w.deleted_at IS NULL;
 }
 ```
 
-每个分类一次返回该分类的全部公开作品（当前：图书 49 本、教材 4 本），加 ETag/缓存；搜索在前端做，不单独建搜索接口。`/api/public/home` 已移除。
+每个分类一次返回该分类的全部公开作品（2026-10-27：图书 49、教材 4、动画 166），加 ETag/缓存；搜索在前端做，不单独建搜索接口。`/api/public/home` 已移除。
 
 #### `GET /api/public/works/:id`
 
@@ -332,6 +333,7 @@ WHERE w.deleted_at IS NULL;
 | `/` | 公开 | 重定向到第一个分类（`/books`） |
 | `/books` | 公开 | 图书分类页：当前在读 + 短评区 + 读过标题区 + 搜索 |
 | `/textbooks` | 公开 | 教材分类页；版式与 `/books` 相同 |
+| `/anime` | 公开 | 动画分类页；版式与 `/books` 相同，文案切换为「在看 / 看过 / 话」 |
 | `/works/:id` | 公开 | 公开详情（摘要 + 可折叠完整记录） |
 | `/admin` | Access | 后台首页：在读作品的章节格子聚合，快速记录进度 |
 | `/admin/library` | Access | 全部作品书架：搜索、筛选、排序、入口 |
@@ -345,7 +347,7 @@ WHERE w.deleted_at IS NULL;
 
 ### 3.2 公开分类页
 
-每个分类页（`/books`、`/textbooks`）共用一套版式，结构从上到下：
+每个分类页（`/books`、`/textbooks`、`/anime`）共用一套版式，结构从上到下：
 
 1. **当前在读**
    - 一行：`在读：书名 · 书名`
@@ -780,3 +782,14 @@ DEV_AUTH_BYPASS=1
 - CI 通过（typecheck / typecheck:test / test / build，72 个测试）
 - Workers Builds：success（2026-10-27 16:35 +08，Version ID `50f8aaa8`）
 - 线上验证：`/api/health` 200，`/api/public/categories/book` 200；生产 CSS 含 `--background`，`AdminDashboard` chunk 已上线
+
+### 2026-10-27 — M9 Bangumi 动画导入与分类文案
+
+- 数据来源：Bangumi 收藏 API + 时间胶囊（HTML）导出；只导动画，音乐/游戏/书籍丢弃
+- 导入：280 works / 1219 logs；公开 166 部（163 当前看完 + 2 搁置 + 1 弃看，后三者曾看完）；114 部仅后台
+- 时间线：1266 条事件，1176 条精确时间 log + 43 条 inferred（28 部无单独事件，用 `updated_at` 兜底）
+- 分类：新增 `/anime`；`shared/category-copy.ts` 按分类切换状态/进度/按钮/表单文案
+- Schema：不新增字段，`works.id = bgm-{subject_id}`；批次来源记录在 `import_batches.source = 'bangumi-anime'`
+- 生产验证：`/api/public/categories/anime` → 200 / archive 166（20 条 progress=0）；`book` 49、`textbook` 4
+- 详情样例：`/api/public/works/bgm-400602` → 30 条 log、28/28 看完
+- 生产部署：main 自动部署；`/admin` 仍由 Cloudflare Access 保护（302）
