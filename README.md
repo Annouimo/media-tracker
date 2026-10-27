@@ -626,16 +626,6 @@ Path:   /admin*
 
 `/admin*` 同时保护后台页面和 `/admin/api/*`，只需要一个 AUD。
 
-<<<<<<< HEAD
-在 Worker 配置中添加（不是 secrets；建议写进 `wrangler.jsonc` 的 `vars`，preview 用 `previews.vars`，避免部署时被覆盖）：
-
-```text
-ACCESS_TEAM_DOMAIN=https://<team>.cloudflareaccess.com
-ACCESS_AUD=<Access application AUD>
-```
-
-`dev.media-tracker.annouimo.com` 的 preview 是独立的 Access 应用（同样 path `/admin*`），需要把它的 AUD 配到 preview 环境变量；不要和 production AUD 混用。
-=======
 当前配置已写入 `wrangler.jsonc` 的 `vars` 和 `previews.vars`：
 
 ```text
@@ -643,10 +633,7 @@ ACCESS_TEAM_DOMAIN=https://annouimo.cloudflareaccess.com
 ACCESS_AUD=25eda77e...a417a5
 ```
 
-Access 边缘已验证：`/admin` 和 `/admin/api/state` 都会 302 到 `annouimo.cloudflareaccess.com` 登录页，JWKS 返回 2 个 key。
-
-当前 production 与 preview 使用同一个 Zero Trust 策略/AUD；配置已写入 `wrangler.jsonc` 的 `vars` 和 `previews.vars`。
->>>>>>> 704876a (feat: add Access-protected admin library)
+Access 边缘已验证：`/admin` 和 `/admin/api/state` 都会 302 到 `annouimo.cloudflareaccess.com` 登录页，JWKS 返回 2 个 key。production 与 preview 使用同一个 Zero Trust 策略/AUD。
 
 本地 Access bypass：
 
