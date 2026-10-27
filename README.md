@@ -492,7 +492,7 @@ WHERE w.deleted_at IS NULL;
 └── README.md
 ```
 
-D1 和自定义域名都在 Cloudflare Dashboard 管理：D1 binding 名为 `MEDIA_TRACKER_DB`，自定义域名在 Domains & Routes 绑定。
+D1 binding 在 `wrangler.jsonc` 中声明（`MEDIA_TRACKER_DB`），因为 Wrangler 以配置文件为准；自定义域名在 Cloudflare Dashboard 的 Domains & Routes 管理。
 
 ---
 
@@ -502,7 +502,7 @@ D1 和自定义域名都在 Cloudflare Dashboard 管理：D1 binding 名为 `MED
 
 **构建不需要任何域名或 D1 环境变量。**
 
-- D1 在 Cloudflare Dashboard → Worker → Settings → Bindings 绑定，binding name 为 `MEDIA_TRACKER_DB`。
+- D1 在 `wrangler.jsonc` 中声明，binding name 为 `MEDIA_TRACKER_DB`；不要同时在 dashboard 再建一个同名 binding，避免配置冲突。
 - 自定义域名在 Workers & Pages → Worker → Settings → Domains & Routes 绑定；一个 Worker 可以绑多个域名，代码不需要知道。
 - `wrangler.jsonc` 设置了 `workers_dev = false` 且不包含 `routes`，这样 `wrangler deploy` 不会覆盖 dashboard 管理的域名。
 
@@ -542,7 +542,7 @@ wish 204 / reading 2 / done 51 / paused 26 / dropped 0
 
 详细结果在 `archive/import/verification.txt`（gitignored）。
 
-生产 Worker 使用 Dashboard binding **`MEDIA_TRACKER_DB`**。本地开发/测试的 D1 会在 M1 的 Vitest/Workers 测试配置里单独处理，不使用生产 ID。
+生产 Worker 使用 `wrangler.jsonc` 里的 **`MEDIA_TRACKER_DB`** binding。本地开发/测试的 D1 会在 M1 的 Vitest/Workers 测试配置里单独处理，不使用生产 ID。
 
 注意：远程库目前没有 `d1_migrations`（DBX 直接执行的 DDL）。未来 schema 变更需要单独跑一次 migration（DBX 或显式 Wrangler 配置），不能依赖当前的自动部署。
 
@@ -559,12 +559,19 @@ Cloudflare Dashboard → Workers & Pages → Connect to Git：
 
 **不需要 Build variables。**
 
-在 Worker 的 **Settings → Bindings** 添加：
+D1 binding 已经声明在 `wrangler.jsonc`：
 
-```text
-Variable name: MEDIA_TRACKER_DB
-D1 database: media-tracker-db
+```jsonc
+"d1_databases": [
+  {
+    "binding": "MEDIA_TRACKER_DB",
+    "database_name": "media-tracker-db",
+    "database_id": "<database-id>"
+  }
+]
 ```
+
+如果之前在 Worker 的 Settings → Bindings 手动建过 `MEDIA_TRACKER_DB`，删掉它；现在以 `wrangler.jsonc` 为准。
 
 在 **Settings → Domains & Routes** 绑定域名：
 
@@ -578,9 +585,9 @@ media-tracker.annouimo.com
 
 - `wrangler.jsonc` 里没有 `routes`，并设置 `workers_dev: false`；Cloudflare 文档说明这样可以让域名完全由 dashboard 管理。
 - `package.json` 的 `packageManager` 固定 Bun；`bun.lock` 决定依赖安装。
-- Vite 插件生成的 `dist/media_tracker/wrangler.json` 不包含 D1 binding 或 custom domain route。
+- Vite 插件生成的 `dist/media_tracker/wrangler.json` 包含 `MEDIA_TRACKER_DB` D1 binding，但**不包含** custom domain route。
 - 自动部署使用 `wrangler deploy`；部署后访问 `/api/health`，确认返回 `{"ok":true,"db":"ok"}`。
-- 如果 `wrangler deploy` 覆盖了 dashboard-only D1 binding，健康检查会返回 503；到时再处理 D1 binding，但域名部分不会再被覆盖。
+- D1 binding 现在在配置文件里，不会再被 `wrangler deploy` 清掉；域名仍然完全由 Dashboard 管理。
 - Access 策略不在 M0 配置；M3 再给 `/admin/*` 和 `/api/admin/*` 加 Access。
 
 本地 Access bypass（仅本地，M3 使用）：

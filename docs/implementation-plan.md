@@ -20,7 +20,7 @@
 
 尚未完成：
 
-- 在 Cloudflare Dashboard 绑定 `MEDIA_TRACKER_DB` 并重新部署，验证 `/api/health`。
+- 用 `wrangler.jsonc` 声明 `MEDIA_TRACKER_DB` 并重新部署，验证 `/api/health`。
 - 任何 API 路由（`/api/*` 目前只有 `/api/health` 和 501 占位）。
 - 公开首页 / 公开详情。
 - Cloudflare Access 与 `/admin`。
@@ -73,17 +73,16 @@
 
 目标：把“已经导入的数据”变成可复现、可本地开发、可部署的基线。
 
-### 2.1 D1 binding（Dashboard `MEDIA_TRACKER_DB`）
+### 2.1 D1 binding（`wrangler.jsonc` + `MEDIA_TRACKER_DB`）
 
 - [x] D1 数据库已由 DBX 导入：`media-tracker-db`。
-- [x] D1 不写入 `wrangler.jsonc`，也不使用环境变量传 ID。
-- [x] Worker 通过 dashboard binding 对象访问：`env.MEDIA_TRACKER_DB`。
-- [x] `worker/index.ts` 的 `Bindings.MEDIA_TRACKER_DB` 已改为必填，并加了带 DB 检查的 `/api/health`。
-- [ ] 在 Cloudflare Dashboard → Worker → Settings → Bindings 添加 D1 binding：
-  - Variable name: `MEDIA_TRACKER_DB`
-  - Database: `media-tracker-db`
+- [x] D1 binding 写进 `wrangler.jsonc`，binding name 是 `MEDIA_TRACKER_DB`。
+- [x] 不使用环境变量传 ID；`database_id` 是标识符，不是密钥。
+- [x] Worker 通过 `env.MEDIA_TRACKER_DB` 访问。
+- [x] `worker/index.ts` 的 `Bindings.MEDIA_TRACKER_DB` 已改为必填，并加了带 DB 检查的 `/api/health`；缺少 binding 时返回 `db: "missing_binding"`。
+- [x] 如果 dashboard 之前手动建过 `MEDIA_TRACKER_DB`，删除它，避免与配置文件冲突。
 
-> 自动部署使用 `wrangler deploy`。部署后必须验证 `/api/health` 返回 `{"ok":true,"db":"ok"}`，确认 dashboard binding 没有被 Wrangler 覆盖。
+> 自动部署使用 `wrangler deploy`，Wrangler 以配置文件为 source of truth。dashboard-only D1 binding 会被覆盖，所以 D1 必须留在 `wrangler.jsonc`。
 
 如果 DBX 是直接执行 DDL，而不是走 Wrangler migrations，未来 schema 变更前需要单独跑一次 migration（DBX 或显式 Wrangler 配置）。当前远程库没有 `d1_migrations`。
 
@@ -151,7 +150,7 @@ Cloudflare 当前的 Miniflare 请求转发依赖 undici dispatcher，Bun 的 `f
 - [ ] 后续 E2E 再加 `@playwright/test`。
 - [ ] `tsconfig.json` / `tsconfig.worker.json` 都 include `shared/**/*.ts`。
 
-**M0 验收**：远程 D1 已跑出 283/372、79 个有日志作品、204/2/51/26/0；Worker 已改用 Dashboard `MEDIA_TRACKER_DB`；域名由 Dashboard 管理且构建无域名/D1 环境变量；部署验证待重新部署；Access 在 M3。
+**M0 验收**：远程 D1 已跑出 283/372、79 个有日志作品、204/2/51/26/0；D1 binding 已写入 `wrangler.jsonc`；域名由 Dashboard 管理且构建无域名/D1 环境变量；部署验证待重新部署；Access 在 M3。
 
 ---
 

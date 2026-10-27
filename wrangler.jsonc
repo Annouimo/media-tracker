@@ -11,13 +11,20 @@
   },
   "observability": {
     "enabled": true
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "MEDIA_TRACKER_DB",
+      "database_name": "media-tracker-db",
+      "database_id": "7d60ec75-c0e4-44f4-89e2-b8addfd7d9ac"
+    }
+  ]
 
-  // D1 and custom domains are managed in the Cloudflare dashboard.
+  // D1 is declared here because Wrangler treats this file as the source of
+  // truth; a dashboard-only binding is removed on the next `wrangler deploy`.
+  // The database_id is an identifier, not a secret.
   //
-  // Bind the existing D1 database with the binding name MEDIA_TRACKER_DB.
-  // Attach one or more custom domains under Domains & Routes.
-  //
-  // `workers_dev` is false and there are no `routes` keys here so that
-  // `wrangler deploy` does not override dashboard-managed domains.
+  // Custom domains are intentionally NOT declared here. `workers_dev` is false
+  // and there are no `routes` keys, so domains remain managed in the
+  // Cloudflare dashboard (Domains & Routes) and can be added/removed freely.
 }

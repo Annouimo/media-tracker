@@ -3,8 +3,8 @@ import { Hono } from 'hono'
 /**
  * Worker bindings.
  *
- * `MEDIA_TRACKER_DB` is a D1 binding configured in the Cloudflare dashboard. The binding
- * name is part of our runtime contract; the database ID is not stored here.
+ * `MEDIA_TRACKER_DB` is declared in `wrangler.jsonc` so every deploy includes
+ * it. The binding name is part of our runtime contract.
  */
 export type Bindings = {
   MEDIA_TRACKER_DB: D1Database
@@ -13,6 +13,17 @@ export type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/api/health', async (c) => {
+  if (!c.env.MEDIA_TRACKER_DB) {
+    return c.json(
+      {
+        ok: false,
+        db: 'missing_binding',
+        service: 'media-tracker',
+      },
+      503,
+    )
+  }
+
   try {
     const row = await c.env.MEDIA_TRACKER_DB.prepare('SELECT 1 AS ok').first<{ ok: number }>()
     return c.json({
@@ -24,7 +35,7 @@ app.get('/api/health', async (c) => {
     return c.json(
       {
         ok: false,
-        db: 'error',
+        db: 'query_error',
         service: 'media-tracker',
       },
       503,
