@@ -434,7 +434,7 @@ created_at      = 导入时间
 - `/api/public/categories/book` → 49（reading 2 / reviews 1 / archive 46）
 - `/api/public/categories/textbook` → 4
 - `/api/public/works/bgm-400602` → 30 条 log，28/28，`finished_on=2024-03-24`
-- `/api/public/works/bgm-329906` → progress 0 / 25，公开页文案为「已看完（进度未记录）」
+- `/api/public/works/bgm-373267` → progress 0 / 13，公开页文案为「已看完（进度未记录）」
 - 生产 JS bundle 含「还没有看过作品」「标记看到第」「已看完（进度未记录）」等动画文案
 - `/anime`、`/works/bgm-400602` → 200；`/admin` → 302（Cloudflare Access）
 - 生产 Schema 仍是 0001；没有 `works.source` / `external_id`，也没有应用 0002
