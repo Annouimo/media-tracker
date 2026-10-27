@@ -66,21 +66,7 @@ watch(
       aria-controls="site-search"
       @click="toggle"
     >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="17"
-        height="17"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <circle cx="11" cy="11" r="7" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
+      搜索
     </button>
 
     <dialog
@@ -115,17 +101,14 @@ watch(
 
 <style scoped>
 .search-toggle {
-  display: inline-flex;
   flex: none;
-  align-items: center;
-  justify-content: center;
-  padding: 0.4rem;
-  line-height: 1;
+  font-size: 16px;
   color: var(--primary);
 }
 
-.search-toggle svg {
-  display: block;
+.search-toggle:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.3rem;
 }
 
 .search-dialog {

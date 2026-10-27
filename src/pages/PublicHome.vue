@@ -171,7 +171,7 @@ watch(
 
 <style scoped>
 .home {
-  padding-top: 0.5rem;
+  padding-top: 1.5rem;
 }
 
 .page-head {
@@ -242,8 +242,8 @@ watch(
 .section-head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: flex-start;
+  gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
@@ -359,20 +359,8 @@ watch(
     font-size: 22px;
   }
 
-  .review-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.15rem;
-  }
-
   .review-title {
-    max-width: 100%;
     font-size: 17px;
-  }
-
-  .review-text {
-    flex: none;
-    width: 100%;
   }
 
   .archive-grid {
