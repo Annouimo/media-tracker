@@ -207,10 +207,6 @@ code {
   padding: var(--gap);
 }
 
-.main--wide {
-  max-width: calc(960px + var(--gap) * 2);
-}
-
 .page-title {
   margin-bottom: 1rem;
   font-size: 40px;
