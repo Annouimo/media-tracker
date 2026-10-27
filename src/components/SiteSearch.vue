@@ -126,6 +126,7 @@ watch(
 
 .search-toggle svg {
   display: block;
+  transform: translateY(-2px);
 }
 
 .search-dialog {

@@ -58,13 +58,4 @@ import ThemeToggle from './ThemeToggle.vue'
   justify-content: flex-end;
   column-gap: var(--gap);
 }
-
-.menu .external-link {
-  display: inline-flex;
-  align-items: center;
-}
-
-.menu .external-link svg {
-  display: block;
-}
 </style>
