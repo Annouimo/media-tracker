@@ -269,9 +269,6 @@ onMounted(async () => {
             <td class="num" data-label="完成">{{ work.state.finishedOn ?? '—' }}</td>
             <td data-label="短评">{{ work.short_review ? '有' : '—' }}</td>
             <td class="actions" data-label="操作">
-              <RouterLink class="action" :to="`/admin/works/${work.id}?tab=metadata`">
-                编辑
-              </RouterLink>
               <a
                 v-if="isPublic(work)"
                 class="action"
