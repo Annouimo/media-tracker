@@ -408,6 +408,8 @@ ALTER TABLE works ADD COLUMN source_url TEXT NOT NULL DEFAULT '';
 
 ## 10. 生产导入（手动）
 
+> **只导数据库不够**：`/anime` 分类来自 `shared/categories.ts`，需要把 `feat/bangumi-import` 分支部署到生产（或至少部署这个分类改动）。否则库里虽然有 280 部动画，页面上没有入口，`/api/public/categories/anime` 也会 404。
+
 已通过：
 
 | 验证 | 结果 |
@@ -436,15 +438,13 @@ ALTER TABLE works ADD COLUMN source_url TEXT NOT NULL DEFAULT '';
    ```bash
    bunx wrangler d1 execute media-tracker-db --remote --file=archive/bangumi/import/import.sql
    ```
-   或者用 DBX 执行同一个 SQL 文件。
+   或者用 DBX 执行同一个 SQL 文件。如果 `import.sql` 太大，按顺序跑 `works.sql`、`logs.sql`；`import_batches` 可省略或用 manifest 的 hash 手工补。
 
 4. **校验**
-   ```sql
-   SELECT COUNT(*) FROM works;   -- 284 + 280 = 564
-   SELECT COUNT(*) FROM logs;    -- 372 + 1219 = 1591
-   SELECT COUNT(*) FROM import_batches; -- +1
+   ```bash
+   bunx wrangler d1 execute media-tracker-db --remote --file=archive/bangumi/import/verify.sql
    ```
-   还要跑 `archive/bangumi/import/README.md` 里的状态/孤儿/重复 seq/`progress > total` 检查。
+   期望：`bangumi_works=280`、`bangumi_logs=1219`、`public_works=166`、`inferred_logs=43`、孤儿/重复 seq/`progress > total` 均为 0；总 `works=564`、`logs=1591`、`import_batches=1`。
 
 5. **验证公开页**
    - `/api/public/categories/anime` → 166

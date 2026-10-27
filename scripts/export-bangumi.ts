@@ -868,6 +868,11 @@ bunx wrangler d1 execute media-tracker-db --remote --file=archive/bangumi/import
 
 或者用 DBX 执行 \`import.sql\`。脚本使用 \`INSERT OR IGNORE\`，重复执行不会重复插入，但也不会更新已有行。
 
+导入后执行 \`verify.sql\`（只读检查）：
+\`\`\`bash
+bunx wrangler d1 execute media-tracker-db --remote --file=archive/bangumi/import/verify.sql
+\`\`\`
+
 如果 \`import.sql\` 太大，可以按顺序执行 \`works.sql\` 和 \`logs.sql\`；\`import_batches\` 可省略，或用 \`manifest.json\` 的 hash 手工补一行。
 
 \`wrangler d1 execute --file\` 不是严格事务：失败时用备份恢复，不要在半导入库上反复重跑。
@@ -905,6 +910,51 @@ SELECT COUNT(*) FROM logs WHERE progress > total_snapshot;
 `
 }
 
+// ----------------------------------------------------------------------- verify
+
+function makeVerifySql(worksCount: number, logsCount: number): string {
+  return `-- Read-only checks after importing the Bangumi anime batch.
+-- Expected: ${worksCount} bangumi works, ${logsCount} bangumi logs, 1 new import_batches row.
+
+SELECT COUNT(*) AS bangumi_works FROM works WHERE source = 'bangumi';
+SELECT COUNT(*) AS bangumi_logs FROM logs WHERE work_id LIKE 'bgm-%';
+
+-- Latest status per imported work: done 163 / wish 108 / paused 8 / dropped 1
+SELECT status, COUNT(*) AS n
+FROM (
+  SELECT l.status
+  FROM logs l
+  JOIN (SELECT work_id, MAX(seq) AS seq FROM logs GROUP BY work_id) latest
+    ON latest.work_id = l.work_id AND latest.seq = l.seq
+  JOIN works w ON w.id = l.work_id
+  WHERE w.source = 'bangumi'
+)
+GROUP BY status;
+
+-- Ever finished or currently reading: 166
+SELECT COUNT(*) AS public_works
+FROM works w
+WHERE w.source = 'bangumi'
+  AND (
+    EXISTS (SELECT 1 FROM logs l WHERE l.work_id = w.id AND l.status = 'done')
+    OR EXISTS (
+      SELECT 1 FROM logs l
+      WHERE l.work_id = w.id
+        AND l.seq = (SELECT MAX(seq) FROM logs WHERE work_id = w.id)
+        AND l.status = 'reading'
+    )
+  );
+
+SELECT COUNT(*) AS inferred_logs FROM logs WHERE work_id LIKE 'bgm-%' AND inferred = 1;
+SELECT COUNT(*) AS orphans FROM logs l LEFT JOIN works w ON w.id = l.work_id WHERE w.id IS NULL;
+SELECT COUNT(*) AS duplicate_seq FROM (
+  SELECT work_id, seq, COUNT(*) AS n FROM logs GROUP BY work_id, seq HAVING n > 1
+);
+SELECT COUNT(*) AS progress_gt_total FROM logs WHERE progress > total_snapshot;
+SELECT * FROM import_batches ORDER BY created_at DESC LIMIT 1;
+`
+}
+
 // ------------------------------------------------------------------------ main
 
 async function main(): Promise<void> {
@@ -939,6 +989,7 @@ async function main(): Promise<void> {
   writeFileSync(join(OUT_DIR, 'works.sql'), `${insertWorks(works)}\n`)
   writeFileSync(join(OUT_DIR, 'logs.sql'), `${insertLogs(logs)}\n`)
   writeFileSync(join(OUT_DIR, 'import.sql'), importSql)
+  writeFileSync(join(OUT_DIR, 'verify.sql'), makeVerifySql(works.length, logs.length))
   writeFileSync(join(OUT_DIR, 'README.md'), makeReadme(works, logs))
   writeFileSync(
     join(OUT_DIR, 'manifest.json'),
