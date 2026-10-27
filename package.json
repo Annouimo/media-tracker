@@ -14,6 +14,7 @@
     "deploy:ci": "wrangler deploy",
     "preview:ci": "wrangler preview",
     "test": "node node_modules/vitest/vitest.mjs run",
+    "export:bangumi": "bun run scripts/export-bangumi.ts",
     "test:watch": "node node_modules/vitest/vitest.mjs",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json"
   },

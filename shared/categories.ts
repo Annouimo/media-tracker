@@ -19,6 +19,7 @@ export type Category = {
 export const CATEGORIES = [
   { slug: 'book', label: '图书', path: '/books', type: 'Book' },
   { slug: 'textbook', label: '教材', path: '/textbooks', type: 'Textbook' },
+  { slug: 'anime', label: '动画', path: '/anime', type: 'Anime' },
 ] as const satisfies readonly Category[]
 
 export type CategorySlug = (typeof CATEGORIES)[number]['slug']
