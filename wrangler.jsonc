@@ -18,7 +18,16 @@
       "database_name": "media-tracker-db",
       "database_id": "7d60ec75-c0e4-44f4-89e2-b8addfd7d9ac"
     }
-  ]
+  ],
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "MEDIA_TRACKER_DB",
+        "database_name": "media-tracker-db",
+        "database_id": "7d60ec75-c0e4-44f4-89e2-b8addfd7d9ac"
+      }
+    ]
+  }
 
   // D1 is declared here because Wrangler treats this file as the source of
   // truth; a dashboard-only binding is removed on the next `wrangler deploy`.
@@ -27,4 +36,8 @@
   // Custom domains are intentionally NOT declared here. `workers_dev` is false
   // and there are no `routes` keys, so domains remain managed in the
   // Cloudflare dashboard (Domains & Routes) and can be added/removed freely.
+  //
+  // Previews do not inherit production settings; the `previews` block above
+  // gives the branch preview its D1 binding. It currently points at the same
+  // database; create a separate preview D1 before write features touch data.
 }

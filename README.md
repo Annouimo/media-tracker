@@ -25,6 +25,18 @@
 - 旧 URL 不保留，使用全新的路由。
 - 旧数据迁移的详细对账规则见 `archive/MIGRATION_RECONCILIATION.md`（本地文件，按 `.gitignore` 不进入 Git）。
 
+### 0.1 Git 工作流
+
+- `main`：只做稳定发布；只有调试通过、准备阶段性上线时才合并/推送。
+- `dev`：日常开发分支；M1 及后续实现都提交到这里。
+- 功能分支可以从 `dev` 切出，完成后合回 `dev`。
+- Cloudflare Workers Builds：
+  - Production branch = `main`
+  - 启用 Preview Builds
+  - Preview command = `bun run preview:ci`
+  - `dev` push 后预览地址形如 `dev-media-tracker.keen18906416.workers.dev`
+- Previews 不继承 production 设置；`wrangler.jsonc` 的 `previews` 块提供 D1 binding。当前 preview 指向同一个 D1，写功能上线前应换成独立 preview D1。
+
 ---
 
 ## 1. 数据模型与状态机

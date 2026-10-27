@@ -11,7 +11,8 @@
     "preview": "bun run build && vite preview",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
     "deploy": "bun run build && wrangler deploy",
-    "deploy:ci": "wrangler deploy"
+    "deploy:ci": "wrangler deploy",
+    "preview:ci": "wrangler preview"
   },
   "dependencies": {
     "hono": "^4.13.14",

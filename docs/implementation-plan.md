@@ -135,6 +135,14 @@ Workers Builds 目标配置：
 | Deploy command | `bun run deploy:ci` |
 | Build variables | 无 |
 
+### 2.4.1 Git 分支与 Preview
+
+- `main`：稳定发布，Cloudflare Production branch。
+- `dev`：日常开发分支；M1+ 都提交到 `dev`。
+- Cloudflare 启用 Preview Builds；Preview command = `bun run preview:ci`。
+- `dev` push 后预览地址：`dev-media-tracker.keen18906416.workers.dev`（模式 `*-media-tracker.keen18906416.workers.dev`）。
+- Previews 不继承 production 设置；`wrangler.jsonc` 的 `previews` 块提供 D1 binding。当前指向同一个 D1，写功能上线前换独立 preview D1。
+
 ### 2.5 本地开发运行时
 
 Cloudflare 当前的 Miniflare 请求转发依赖 undici dispatcher，Bun 的 `fetch()` 会忽略它：
