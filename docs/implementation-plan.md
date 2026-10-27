@@ -91,21 +91,29 @@ bun run db:migrate:remote
 
 `0001_init.sql` 里是 `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`，不会破坏已有表；它会把 0001 记录到 `d1_migrations`，避免以后迁移状态漂移。
 
-> 远程执行需要 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。当前只读 token 没有 account list 权限，M0 远程校验还缺 account ID。
+> 远程 D1 已用只读 token + account ID 通过 REST `/query` 校验。当前远程库的表是 `works` / `logs` / `import_batches`，**没有 `d1_migrations`**。第一次未来 schema 变更前，需要用可写 token 跑一次 `bun run db:migrate:remote`，把 0001 记录进去。
 
 ### 2.2 远程基线校验
 
-用 DBX 或 Wrangler 记录一次结果，写进 `archive/import/verification.txt`（gitignored）：
+已完成（只读 token；详细结果在 `archive/import/verification.txt`）：
 
-```sql
-SELECT COUNT(*) FROM works;                              -- 283
-SELECT COUNT(*) FROM logs;                               -- 372
-SELECT COUNT(*) FROM logs WHERE logged_at IS NULL;       -- 218
-SELECT COUNT(*) FROM logs WHERE inferred = 1;            -- 67
-SELECT COUNT(*) FROM works WHERE added_at IS NULL;       -- 52
-SELECT COUNT(*) FROM works WHERE legacy_id IS NOT NULL;  -- 244
-SELECT COUNT(*) FROM logs WHERE work_id NOT IN (SELECT id FROM works); -- 0
-```
+| 项目 | 值 |
+|---|---:|
+| works | 283 |
+| logs | 372 |
+| works_with_logs | 79 |
+| date_only | 218 |
+| timestamped | 154 |
+| inferred | 67 |
+| missing_added_at | 52 |
+| legacy_id | 244 |
+| orphan_logs | 0 |
+| status | wish 204 / reading 2 / done 51 / paused 26 / dropped 0 |
+| public ever done | 51 |
+| public currently reading | 2 |
+| total_snapshot mismatch | 4 |
+| status events | 77 |
+| chapter / binary | 40 / 243 |
 
 当前状态（最新 seq）：
 
@@ -167,7 +175,7 @@ Cloudflare 当前的 Miniflare 请求转发依赖 undici dispatcher，Bun 的 `f
 - [ ] 后续 E2E 再加 `@playwright/test`。
 - [ ] `tsconfig.json` / `tsconfig.worker.json` 都 include `shared/**/*.ts`。
 
-**M0 验收**：本地 D1 已跑出 283/372 和 204/2/51/26/0；D1/子域环境变量注入与 Workers Builds 构建已配置；远程校验结果待 account ID；Access 在 M3。
+**M0 验收**：本地和远程 D1 都已跑出 283/372、79 个有日志作品、204/2/51/26/0；D1/子域环境变量注入与 Workers Builds 构建已配置；Access 在 M3；`d1_migrations` 待用可写 token 补记录。
 
 ---
 

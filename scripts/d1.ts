@@ -11,7 +11,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { generateWranglerConfig } from './wrangler-config'
 
 const command = process.argv[2]
@@ -75,7 +75,10 @@ switch (command) {
       '--file=scripts/verify-d1.sql',
     ])
     break
-  case 'verify:remote':
+  case 'verify:remote': {
+    // `--file` uses the D1 import endpoint, which needs write permission.
+    // `--command` uses the query endpoint, so a read-only token can run SELECTs.
+    const sql = readFileSync('scripts/verify-d1.sql', 'utf8')
     run([
       'd1',
       'execute',
@@ -83,9 +86,11 @@ switch (command) {
       '--remote',
       '--config',
       configFile,
-      '--file=scripts/verify-d1.sql',
+      '--command',
+      sql,
     ])
     break
+  }
   default:
     throw new Error(`Unknown command: ${command ?? '(none)'}`)
 }

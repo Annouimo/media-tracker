@@ -549,8 +549,13 @@ bun run db:seed:local   # 从 archive/import/*.sql 导入本地数据
 
 ```bash
 # 需要 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID
-bun run db:migrate:remote
+bun run db:verify:remote
+bun run db:migrate:remote   # 需要可写 token
 ```
+
+远程校验已完成：283 works / 372 logs / 79 个有日志作品 / 204·2·51·26·0 / 51 个公开“曾经读完” / 2 个当前在读。详细结果在 `archive/import/verification.txt`。
+
+注意：远程库目前没有 `d1_migrations`（DBX 直接执行的 DDL）。第一次未来 schema 变更前，用可写 token 跑一次 `bun run db:migrate:remote`，把 0001 记录进去；`CREATE TABLE/INDEX IF NOT EXISTS` 不会破坏已有表。
 
 ### 5.5 Workers Builds（GitHub 自动部署）
 
