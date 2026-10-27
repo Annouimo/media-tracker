@@ -116,7 +116,7 @@ watch(
 
 <style scoped>
 .work-page {
-  padding-top: 0.5rem;
+  padding-top: 1.5rem;
 }
 
 .back {
@@ -243,10 +243,6 @@ watch(
 }
 
 @media (max-width: 768px) {
-  .work-title {
-    font-size: 32px;
-  }
-
   .history-item {
     flex-direction: column;
     gap: 0.2rem;

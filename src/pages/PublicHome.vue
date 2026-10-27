@@ -171,7 +171,7 @@ watch(
 
 <style scoped>
 .home {
-  padding-top: 0.5rem;
+  padding-top: 1.5rem;
 }
 
 .page-head {
