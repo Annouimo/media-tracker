@@ -53,6 +53,7 @@ const emit = defineEmits<{
   create: [payload: CreateWorkInput]
   update: [payload: UpdateWorkInput]
   change: []
+  cancel: []
 }>()
 
 type Draft = {
@@ -613,7 +614,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
           <RouterLink
             v-for="work in duplicates"
             :key="work.id"
-            :to="`/admin/works/${work.id}/progress`"
+            :to="`/admin/works/${work.id}`"
           >
             {{ work.title }}
           </RouterLink>
@@ -624,11 +625,11 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
           <button class="btn primary" type="submit" :disabled="saving">
             {{ saving ? '保存中…' : saveLabel }}
           </button>
-          <RouterLink class="btn" to="/admin/library">取消</RouterLink>
+          <button class="btn" type="button" @click="emit('cancel')">取消</button>
         </div>
 
         <p v-if="mode === 'edit'" class="help">
-          状态和进度只读，请到进度页修改；分类需要在
+          状态和进度只读，请到「进度」标签页修改；分类需要在
           <code>shared/categories.ts</code> 注册后才会出现在公开页。
         </p>
       </section>

@@ -34,7 +34,7 @@ onMounted(async () => {
   <header class="admin-header">
     <div class="admin-bar">
       <RouterLink class="brand" to="/admin">
-        我的阅藏
+        Annouimo 的陈列室
         <span class="badge">管理</span>
       </RouterLink>
 

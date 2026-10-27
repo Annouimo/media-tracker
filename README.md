@@ -1,9 +1,9 @@
-# 我的阅藏 / media-tracker
+# Annouimo 的陈列室 / media-tracker
 
 一个单用户的阅读 / 动画档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人作品库**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M1–M9 已完成并部署到生产（`media-tracker.annouimo.com`）
+- 当前状态：M1–M9 已完成并部署到生产（`gallery.annouimo.com`）；首页改版和后台作品页合并在 `dev` 分支
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -11,10 +11,10 @@
 ## 0. 已确定的产品决策
 
 - 公开首页是纯文字极简列表，不使用封面、评分、标签。
-- 公开页最上方有一行“当前在读”短列表（实际通常 1–2 本）。
+- 公开页最上方是“在读”区块，和下面的分类 section 同一套版式（标题 + 网格），并显示进度（实际通常 1–2 本）。
 - 公开页的“读过”= **曾经读完**，不是“最新状态为读完”；开始重读不会让作品从公开页消失。
 - 公开详情页默认只展示摘要；完整历史放在同页可折叠的“完整记录”区域，公开可看，搁置/弃读可以暴露。
-- 公开首页第二部分是 2–3 列标题列表（手机单列），按读完时间从新到旧排序。
+- 公开首页的“读过”是 2 列 row-major 标题网格（手机单列），按年份分组；排序仍是读完时间从新到旧。
 - 公开页按分类切换：顶部导航就是分类列表（图书 / 教材 / 动画），每个分类一个独立 URL，页面版式相同；分类和分类文案在 `shared/categories.ts` / `shared/category-copy.ts` 注册。
 - 分类文案按类别切换：图书用「读 / 章 / 本」，动画用「看 / 话 / 部」；状态、进度、按钮、后台表单都跟随作品类型。
 - 私有管理面放在 `/admin`，由 Cloudflare Access 保护；包含全部 564 条作品（2026-10-27），包括想看、在看、搁置、弃看。
@@ -25,6 +25,8 @@
 - `total_progress = 1` 视为“未设置章节数”，不再作为一种正式模式。
 - 二元作品在进入 `reading` 状态时，提示手动输入章节数；可以显式选择继续保持二元。
 - 样式使用原版 PaperMod 的设计 token，不引入它的 Hugo 模板，也不做自定义主题。
+- 公开页不使用区块分割线，靠留白和字号分层；header 保持 1024px、无下边框，与 `www.annouimo.com` 一致。
+- 搜索不是常驻控件：顶栏一个搜索按钮，点开输入框，输入即筛选当前分类。
 - 旧 URL 不保留，使用全新的路由。
 - 旧数据迁移的详细对账规则见 `archive/MIGRATION_RECONCILIATION.md`（本地文件，按 `.gitignore` 不进入 Git）。
 
@@ -37,7 +39,7 @@
   - Production branch = `main`
   - 启用 Preview Builds
   - Preview command = `bun run preview:ci`
-  - `dev` push 后预览地址形如 `dev.media-tracker.annouimo.com`
+  - `dev` push 后预览地址形如 `dev.gallery.annouimo.com`
 - Previews 不继承 production 设置；`wrangler.jsonc` 的 `previews` 块提供 D1 binding。当前 preview 指向同一个 D1，写功能上线前应换成独立 preview D1。
 
 ---
@@ -155,7 +157,7 @@ WHERE w.deleted_at IS NULL;
 
 - 从非 `reading` 状态进入 `reading` 时，如果 `total_progress = 1`，API 返回 `409 needs_total_progress`。
 - 前端弹窗要求输入章节数；请求带 `totalProgress`，服务端在同一个 `batch()` 里更新 `works.total_progress` 并写 log，避免“章节数改了但状态没变”。
-- 用户可以显式选择“不按章节记录”，请求带 `confirm_binary: true`，则保持 `total_progress = 1`，进度页只显示“标记读完”+ 状态按钮。
+- 用户可以显式选择“不按章节记录”，请求带 `confirm_binary: true`，则保持 `total_progress = 1`，作品页的进度 tab 只显示“标记读完”+ 状态按钮。
 - 已经是 `reading` 的二元作品，在下一次进度/状态操作时提示。
 - 已经 `done` 的二元作品，只有重读进入 `reading` 时才提示；不重读就不需要章节格子。
 - `/admin` 提供“未设置章节数”筛选，方便逐步补全 243 本旧二元作品。
@@ -248,11 +250,11 @@ WHERE w.deleted_at IS NULL;
 
 #### `GET /admin/api/state`
 
-返回全部作品、当前状态和全部 logs，供后台首页、书架、进度页和编辑页使用。当前规模（283 本 / 迁移后约 372 条 logs）一次返回即可；后台响应 `Cache-Control: no-store`。
+返回全部作品、当前状态和全部 logs，供后台首页、书架和作品页使用。当前规模（283 本 / 迁移后约 372 条 logs）一次返回即可；后台响应 `Cache-Control: no-store`。
 
 #### `GET /admin/api/works`
 
-返回全部作品的精简列表（`id`、`title`、`creator`、`type`），供添加/编辑页做同名同作者查重，避免拉全量 state。响应 `Cache-Control: no-store`。
+返回全部作品的精简列表（`id`、`title`、`creator`、`type`），供添加页和作品页元数据 tab 做同名同作者查重，避免拉全量 state。响应 `Cache-Control: no-store`。
 
 #### `POST /admin/api/works`
 
@@ -331,17 +333,16 @@ WHERE w.deleted_at IS NULL;
 | 路由 | 权限 | 内容 |
 |---|---|---|
 | `/` | 公开 | 重定向到第一个分类（`/books`） |
-| `/books` | 公开 | 图书分类页：当前在读 + 短评区 + 读过标题区 + 搜索 |
+| `/books` | 公开 | 图书分类页：在读 + 短评 + 读过标题区，搜索在顶栏 |
 | `/textbooks` | 公开 | 教材分类页；版式与 `/books` 相同 |
 | `/anime` | 公开 | 动画分类页；版式与 `/books` 相同，文案切换为「在看 / 看过 / 话」 |
 | `/works/:id` | 公开 | 公开详情（摘要 + 可折叠完整记录） |
 | `/admin` | Access | 后台首页：在读作品的章节格子聚合，快速记录进度 |
 | `/admin/library` | Access | 全部作品书架：搜索、筛选、排序、入口 |
 | `/admin/works/new` | Access | 表单添加作品（可切 JSON 模式） |
-| `/admin/works/:id/edit` | Access | 表单编辑元数据/短评/长评（可切 JSON 模式） |
-| `/admin/works/:id/progress` | Access | 点格子、改状态、历史、撤销 |
+| `/admin/works/:id` | Access | 作品工作页：进度（默认）+ 元数据两个 tab |
 
-旧 URL 不保留。后台建议作为独立入口整页加载，避免 SPA 客户端路由绕过 Access。
+旧路由 `/admin/works/:id/progress`、`/admin/works/:id/edit` 保留重定向到新作品页（后者带 `?tab=metadata`）；其余旧 URL 不保留。后台建议作为独立入口整页加载，避免 SPA 客户端路由绕过 Access。
 
 新增分类只需在 `shared/categories.ts` 增加一行（`slug` / `label` / `path` / `type`）：路由、顶部导航和公开 API 都从这张表读取；作品的 `works.type` 使用同一个 `type` 值。
 
@@ -349,38 +350,40 @@ WHERE w.deleted_at IS NULL;
 
 每个分类页（`/books`、`/textbooks`、`/anime`）共用一套版式，结构从上到下：
 
-1. **当前在读**
-   - 一行：`在读：书名 · 书名`
-   - 只显示该分类下当前 `status = reading` 的作品，按最近活动倒序；通常 1–2 本。
-   - 没有在读作品时整行隐藏。
-   - 每本书链接到 `/works/:id`。
+1. **页面标题**
+   - 可见的分类标题（40px，如「图书」「动画」）。
+   - 下方一行计数：`读过 51 本 · 在读 2 本`；动词和单位走 `CategoryCopy`（动画为 `看过 X 部 · 在看 Y 部`）。
+   - 搜索激活时显示 `搜索：关键词` 和「清除」。
 
-2. **短评区**
-   - 只显示该分类下“曾经读完 + `short_review` 非空”的作品。
-   - 每行：书名链接 + 下方短评（纯文本，保留换行；页面最多显示 3 行，详情全文）。
-   - 行间 `1px solid var(--border)`，不使用卡片。
-   - 按 `finished_on` 倒序。
-   - 没有短评时整个区块隐藏。
+2. **在读**
+   - 和下面的 section 完全同一套版式：`section-head`（24px 标题 + 条数）+ 2 列 `archive-grid`；没有背景块。
+   - 每条：书名链接（18px）+ 同一行的进度（`16 / 59 章`；动画用 `话`）；二元作品显示「未分章 / 未分话」。
+   - 不展示最近活动或读完日期；没有在读作品时整块隐藏。
 
-3. **读过（其余）**
-   - 只显示该分类下“曾经读完 + 没有短评”的作品。
-   - 2–3 列自适应标题列表；手机单列。
-   - 每项只有书名链接，不使用封面、作者、年份、评分。
-   - 按 `finished_on` 倒序。
+3. **短评**
+   - 只显示该分类下“曾经读完 + `short_review` 非空”的作品；标题 `短评` + 条数。
+   - 每条一行：书名链接（18px）+ 同一行的短评（16px，单行省略，hover 显示全文）；不显示日期，不使用卡片/分割线。
+   - 与下面的“读过”共用同一套标题字号和节奏。
 
-4. **搜索**
-   - 列表上方一个轻量输入框。
-   - 客户端过滤当前分类的书名、作者、短评；同时作用于短评区和标题区。
-   - 切换分类时清空关键词；无结果时显示极简空状态。
+4. **读过（其余）**
+   - 只显示该分类下“曾经读完 + 没有短评”的作品；标题用 `copy.readSection` + 条数。
+   - row-major 网格：和“在读”同一套 2 列 `archive-grid`，手机 1 列；先左到右、再下一行，保持读完时间倒序。
+   - 按年份分组（`2026`、`2025`…，13px 标签），组内只有书名链接（18px），不显示作者/年份/评分。
+   - 不使用 CSS `columns`（column-major 会破坏时间顺序）。
 
-顶部菜单不再有“首页”，直接是分类链接；当前分类带下划线，logo 回到 `/` 后重定向到第一个分类。分类页之间切换是独立路由，浏览器前进/后退正常。
+5. **搜索**
+   - 顶栏右侧一个放大镜按钮（仅分类页显示），点击弹出输入框；不是常驻输入框。
+   - 输入即筛选当前分类的书名、作者、短评；Esc 或「完成」关闭，关键词保留。
+   - 关闭后页面标题下显示 `搜索：关键词` + 「清除」；切换分类时清空；无结果显示极简空状态。
+   - 弹层无边框，用底色和阴影；输入框无边框。
+
+顶部菜单仍是分类链接；当前分类带下划线（状态提示，不是分割线），logo 回到 `/` 后重定向到第一个分类。分类页之间切换是独立路由，浏览器前进/后退正常。
 
 视觉：
 
-- 内容宽 720px，PaperMod 的 18px/1.6 正文、40px 页面标题、24px 区块标题。
-- 头部 1024px 导航、logo 24px、菜单 16px、明暗切换。
-- 不使用 PaperMod 的卡片列表；首页是纯文字。
-- 重读中的作品会同时出现在“当前在读”和“读过”区，这是预期行为。
+- 内容宽 720px；页面标题 40px、区块标题 24px、列表/短评标题 18px、短评正文 16px、meta 14px、计数/年份 13px。
+- 头部保持 1024px、无下边框，与 `www.annouimo.com` 一致；不使用卡片、区块分割线、阴影（搜索弹层除外）。
+- 重读中的作品会同时出现在“在读”和“读过”区，这是预期行为。
 
 ### 3.3 公开详情
 
@@ -402,7 +405,7 @@ WHERE w.deleted_at IS NULL;
 
 后台使用独立布局：不渲染公开站的 header/footer。顶部是管理 header：
 
-- 品牌“我的阅藏 · 管理”（回到 `/admin`，即后台首页）；
+- 品牌“Annouimo 的陈列室 · 管理”（回到 `/admin`，即后台首页）；
 - 导航：首页、书架、添加作品；
 - 右侧：公开站点（新窗口）、主题切换、Access 邮箱、退出（`/cdn-cgi/access/logout`）。
 
@@ -410,7 +413,7 @@ WHERE w.deleted_at IS NULL;
 
 - 聚合所有 `status = reading` 作品的章节格子；点格子直接记录进度。
 - 记录日期默认今天，可改成过去的日期补录（`logged_on`，只保留日期）。
-- 每本显示书名、作者、`进度 / 总章节`、最近活动；可一键“读完”或打开进度页。
+- 每本显示书名、作者、`进度 / 总章节`、最近活动；可一键“读完”或打开作品页。
 - 未分章的在读作品显示“标记读完”。
 - 没有在读作品时提示并链接到书架。
 - 记录成功/读完用 toast 提示。
@@ -422,28 +425,35 @@ WHERE w.deleted_at IS NULL;
 - 筛选：分类、状态、年份、是否设置章节数、是否有短评；有筛选条件时显示“清除筛选”。
 - 排序：最近活动、添加时间、书名、读完时间。
 - 表格列：作品、分类、作者、状态、进度、最近活动、添加、读完、短评、操作。
-- 每行入口：进度、编辑；公开作品的书名链接到公开详情。
+- 书名进入作品工作页；操作列只保留公开页 ↗（新窗口，仅公开作品）。元数据在作品页内切 tab，不再单独放编辑入口。
 - 桌面端表头 sticky；≤768px 改为卡片列表（保留作品、分类、状态、进度、最近活动、操作）。
 - 视觉沿用 PaperMod token；后台内容宽度 1200px。
 - admin 路由懒加载：公开首屏不包含后台代码。
 
-### 3.5 添加 / 编辑作品
+### 3.5 添加作品 / 元数据编辑
 
-两个页面共用 `src/components/admin/WorkForm.vue`：
+添加页和作品页的「元数据」tab 共用 `src/components/admin/WorkForm.vue`：
 
 - 字段：标题（必填）、作者、年份、分类（从 `shared/categories.ts` 注册表选择）、总章节数、短评、长评链接；新建时还有初始状态、初始进度、读完日期。
 - 客户端校验（必填、数字范围、URL、进度不超过总章节数、未分章提示）；服务端仍用同一套 Zod schema 兜底。
 - 实时预览（书名/作者/年份/分类/状态/进度/短评/长评）。
 - 同 title + creator 时警告，但允许继续。
 - “JSON 模式”可切换到原始 JSON 编辑（新建用 create schema，编辑用 update schema），应用时校验；适合特殊字段或粘贴。
-- 有未保存修改时，离开页面或关闭标签会提示。
-- 新建保存后进入进度页；编辑保存后用 toast 提示“已保存”。
-- 编辑模式不显示状态/进度/读完日期；这些只读，入口链接到进度页，避免绕过 log 快照。
+- 有未保存修改时，离开页面、切换 tab 或关闭标签会提示。
+- 新建保存后进入作品页（默认进度 tab）；元数据保存后 toast「已保存」，留在元数据 tab。
+- 元数据 tab 不显示状态/进度/读完日期的编辑；这些只读，进度在「进度」tab 修改，避免绕过 log 快照。
 
-### 3.6 进度页 `/admin/works/:id/progress`
+### 3.6 作品页 `/admin/works/:id`
 
-- 顶部面包屑：书架 / 书名 / 进度；公开作品旁边有「公开页 ↗」。
-- 顶部：书名、作者/年份/分类/最近活动。
+一个页面承载进度和元数据，顶部统一：
+
+- 面包屑：作品库 / 书名。
+- 作品头：书名、作者/年份/分类；公开作品右侧有「公开页 ↗」（新窗口）。
+- 两个 tab：`进度`（默认）、`元数据`；`?tab=metadata` 可直接打开元数据 tab。
+- 书架点书名 → 进度 tab；元数据 tab 在作品页内切换；旧 `/progress`、`/edit` 地址重定向到这里。
+
+**进度 tab**：
+
 - sticky 操作栏：当前状态 + 进度、状态按钮、记录日期。
   - 记录日期默认今天；改成过去的日期可以补录（补录写 `logged_on`，只保留日期，不写时间）。
 - 章节格子：
@@ -455,6 +465,13 @@ WHERE w.deleted_at IS NULL;
 - 二元转章节提示：原生 `<dialog>` 输入章节数，或显式保持二元；Esc 可关闭。
 - 完整历史：按 `seq` 倒序，标出 `progress` / `status` / `both`。
 - 撤销：只允许撤销最新一条 log；先点“撤销”，再点“确认撤销”，不再使用浏览器 `confirm`。
+
+**元数据 tab**：
+
+- 顶部只读提示：当前状态、进度；状态和进度到「进度」tab 修改。
+- `WorkForm`：标题/作者/年份/分类/总章节/短评/长评 + 实时预览 + JSON 模式。
+- 保存后 toast「已保存」，留在 tab；有未保存修改时切换 tab / 离开页面会提示。
+- 「取消」切回进度 tab，不会跳离作品页。
 
 ### 3.7 添加 JSON schema
 
@@ -522,7 +539,7 @@ WHERE w.deleted_at IS NULL;
 │   ├── main.ts
 │   ├── router.ts
 │   ├── style.css
-│   ├── components/      # SiteHeader / AdminHeader / WorkPreview / WorkForm / ChapterGrid
+│   ├── components/      # SiteHeader / SiteSearch / AdminHeader / WorkPreview / WorkForm / ChapterGrid
 │   ├── layouts/         # PublicLayout / AdminLayout
 │   ├── lib/
 │   └── pages/           # PublicHome / PublicWork / admin（Dashboard / Library / ...）
@@ -595,7 +612,7 @@ bun run typecheck:test
 
 CI 在 `.github/workflows/ci.yml`：Bun 1.4.3 + Node 22，执行 typecheck、typecheck:test、test、build。
 
-M1–M6 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（6 本 / 9 条 log），不接触生产数据。当前 72 个测试全部通过。
+M1–M6 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（6 本 / 9 条 log），不接触生产数据。当前 79 个测试全部通过。
 
 ### 5.4 D1
 
@@ -645,7 +662,7 @@ D1 binding 已经声明在 `wrangler.jsonc`：
 在 **Settings → Domains & Routes** 绑定域名：
 
 ```text
-media-tracker.annouimo.com
+gallery.annouimo.com
 ```
 
 要加第二个域名，就在同一个地方继续 Add Custom Domain；不需要改代码，也不需要重新设置构建变量。
@@ -663,7 +680,7 @@ media-tracker.annouimo.com
 在 Zero Trust → Access → Applications 添加一个 Self-hosted 应用：
 
 ```text
-Domain: media-tracker.annouimo.com
+Domain: gallery.annouimo.com
 Path:   /admin*
 ```
 

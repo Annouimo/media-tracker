@@ -64,7 +64,7 @@ async function load(): Promise<void> {
 }
 
 onMounted(() => {
-  document.title = '首页 · 我的阅藏'
+  document.title = '首页 · Annouimo 的陈列室'
   void load()
 })
 
@@ -149,7 +149,7 @@ async function markDone(work: WorkWithState): Promise<void> {
           <header class="card-head">
             <div>
               <h2>
-                <RouterLink :to="`/admin/works/${work.id}/progress`">
+                <RouterLink :to="`/admin/works/${work.id}`">
                   {{ work.title }}
                 </RouterLink>
               </h2>
@@ -171,7 +171,7 @@ async function markDone(work: WorkWithState): Promise<void> {
               >
                 {{ copyFor(work).doneAction }}
               </button>
-              <RouterLink class="open" :to="`/admin/works/${work.id}/progress`">
+              <RouterLink class="open" :to="`/admin/works/${work.id}`">
                 进度页 →
               </RouterLink>
             </div>

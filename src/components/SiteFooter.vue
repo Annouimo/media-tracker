@@ -4,6 +4,6 @@ const year = new Date().getFullYear()
 
 <template>
   <footer class="footer">
-    <span>© {{ year }} 我的阅藏</span>
+    <span>© {{ year }} Annouimo 的陈列室</span>
   </footer>
 </template>

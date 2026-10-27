@@ -130,7 +130,7 @@ function errorMessage(cause: unknown): string {
 }
 
 onMounted(async () => {
-  document.title = '作品库 · 我的阅藏'
+  document.title = '作品库 · Annouimo 的陈列室'
   try {
     data.value = await getAdminState()
   } catch (cause) {
@@ -250,10 +250,9 @@ onMounted(async () => {
         <tbody>
           <tr v-for="work in filtered" :key="work.id">
             <td class="title" data-label="作品">
-              <RouterLink v-if="isPublic(work)" :to="`/works/${work.id}`">
+              <RouterLink :to="`/admin/works/${work.id}`">
                 {{ work.title }}
               </RouterLink>
-              <span v-else>{{ work.title }}</span>
             </td>
             <td class="category" data-label="分类">{{ typeLabel(work.type) }}</td>
             <td data-label="作者/制作">{{ work.creator || '—' }}</td>
@@ -270,12 +269,15 @@ onMounted(async () => {
             <td class="num" data-label="完成">{{ work.state.finishedOn ?? '—' }}</td>
             <td data-label="短评">{{ work.short_review ? '有' : '—' }}</td>
             <td class="actions" data-label="操作">
-              <RouterLink class="action" :to="`/admin/works/${work.id}/progress`">
-                进度
-              </RouterLink>
-              <RouterLink class="action" :to="`/admin/works/${work.id}/edit`">
-                编辑
-              </RouterLink>
+              <a
+                v-if="isPublic(work)"
+                class="action"
+                :href="`/works/${work.id}`"
+                target="_blank"
+                rel="noreferrer"
+              >
+                公开页 ↗
+              </a>
             </td>
           </tr>
         </tbody>
