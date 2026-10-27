@@ -149,7 +149,7 @@ async function markDone(work: WorkWithState): Promise<void> {
           <header class="card-head">
             <div>
               <h2>
-                <RouterLink :to="`/admin/works/${work.id}/progress`">
+                <RouterLink :to="`/admin/works/${work.id}`">
                   {{ work.title }}
                 </RouterLink>
               </h2>
@@ -171,7 +171,7 @@ async function markDone(work: WorkWithState): Promise<void> {
               >
                 {{ copyFor(work).doneAction }}
               </button>
-              <RouterLink class="open" :to="`/admin/works/${work.id}/progress`">
+              <RouterLink class="open" :to="`/admin/works/${work.id}`">
                 进度页 →
               </RouterLink>
             </div>

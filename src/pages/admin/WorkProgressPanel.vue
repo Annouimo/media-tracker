@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
-import { categoryForType, copyForType } from '../../../shared/categories'
+import { RouterLink } from 'vue-router'
+import { copyForType } from '../../../shared/categories'
 import { todayLocalDay } from '../../../shared/dates'
-import type { AdminWorkDetail, WorkStatus } from '../../../shared/types'
+import type { AdminWorkDetail, WorkStatus, WorkWithState } from '../../../shared/types'
 import {
   deleteLog,
   getAdminWork,
@@ -14,12 +14,13 @@ import {
 import { describeLog, progressLabel } from '../../lib/format'
 import { ApiError } from '../../lib/http'
 import ChapterGrid from '../../components/admin/ChapterGrid.vue'
-import AdminBreadcrumb from '../../components/admin/AdminBreadcrumb.vue'
 
 type StatusAction = 'reading' | 'done' | 'paused' | 'dropped'
 type PromptMode = 'status' | 'round'
 
-const route = useRoute()
+const props = defineProps<{ workId: string }>()
+const emit = defineEmits<{ updated: [work: WorkWithState] }>()
+
 const detail = ref<AdminWorkDetail | null>(null)
 const loading = ref(true)
 const saving = ref(false)
@@ -42,18 +43,9 @@ const latestLog = computed(() => logs.value.at(-1) ?? null)
 const history = computed(() => [...logs.value].reverse())
 
 const status = computed<WorkStatus>(() => work.value?.state.status ?? 'wish')
-const typeLabel = computed(() => {
-  const type = work.value?.type
-  return type ? (categoryForType(type)?.label ?? type) : ''
-})
 const total = computed(() => work.value?.total_progress ?? 1)
 const progress = computed(() => work.value?.state.progress ?? 0)
 const isBinary = computed(() => total.value <= 1)
-const isPublic = computed(
-  () =>
-    work.value !== null &&
-    (work.value.state.finishedOn !== null || work.value.state.status === 'reading'),
-)
 
 const progressText = computed(() => {
   if (!work.value) return ''
@@ -125,7 +117,6 @@ async function load(id: string): Promise<void> {
 
   try {
     detail.value = await getAdminWork(id)
-    document.title = `${detail.value.work.title} · 进度 · 我的阅藏`
   } catch (cause) {
     if (cause instanceof ApiError && cause.status === 404) {
       notFound.value = true
@@ -142,6 +133,7 @@ async function refresh(): Promise<void> {
   if (!id) return
   detail.value = await getAdminWork(id)
   undoingId.value = null
+  emit('updated', detail.value.work)
 }
 
 async function run(action: () => Promise<unknown>): Promise<boolean> {
@@ -257,9 +249,9 @@ async function undo(id: string): Promise<void> {
 }
 
 watch(
-  () => route.params.id,
+  () => props.workId,
   (id) => {
-    if (typeof id === 'string') {
+    if (id) {
       void load(id)
     } else {
       notFound.value = true
@@ -282,29 +274,6 @@ watch(
     <p v-else-if="error && !work" class="empty" role="alert">{{ error }}</p>
 
     <template v-else-if="work">
-      <div class="crumb-row">
-        <AdminBreadcrumb
-          :items="[
-            { label: '作品库', to: '/admin/library' },
-            { label: work.title, to: `/admin/works/${work.id}/progress` },
-            { label: '进度' },
-          ]"
-        />
-        <RouterLink v-if="isPublic" class="public-link" :to="`/works/${work.id}`">
-          公开页 ↗
-        </RouterLink>
-      </div>
-
-      <header class="work-header">
-        <h1>{{ work.title }}</h1>
-        <p class="meta">
-          <span v-if="work.creator">{{ work.creator }}</span>
-          <span v-if="work.release_year">{{ work.release_year }}</span>
-          <span>{{ typeLabel }}</span>
-          <span v-if="latestLog">最近：{{ latestLog.logged_on }}</span>
-        </p>
-      </header>
-
       <div class="action-bar">
         <div class="action-state">
           <strong>{{ copy.status[status] }}</strong>
@@ -449,46 +418,6 @@ watch(
 <style scoped>
 .progress-page {
   padding-top: 0.5rem;
-}
-
-.crumb-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin: 0 0 1.5rem;
-}
-
-.public-link {
-  flex: none;
-  font-size: 13px;
-  color: var(--secondary);
-}
-
-.public-link:hover {
-  color: var(--primary);
-}
-
-.work-header {
-  margin-bottom: 0.5rem;
-}
-
-.work-header h1 {
-  margin: 0 0 0.65rem;
-  font-size: 40px;
-  line-height: 1.2;
-}
-
-.meta {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--secondary);
-}
-
-.meta span + span::before {
-  margin: 0 0.45rem;
-  content: '·';
 }
 
 .action-bar {
@@ -722,10 +651,6 @@ watch(
 }
 
 @media (max-width: 768px) {
-  .work-header h1 {
-    font-size: 32px;
-  }
-
   .log-date {
     width: 100%;
     margin-left: 0;

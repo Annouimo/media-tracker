@@ -8,9 +8,8 @@ import PublicWork from './pages/PublicWork.vue'
 const AdminLayout = () => import('./layouts/AdminLayout.vue')
 const AdminDashboard = () => import('./pages/admin/AdminDashboard.vue')
 const AdminLibrary = () => import('./pages/admin/AdminLibrary.vue')
-const AdminWorkEdit = () => import('./pages/admin/AdminWorkEdit.vue')
 const AdminWorkNew = () => import('./pages/admin/AdminWorkNew.vue')
-const AdminWorkProgress = () => import('./pages/admin/AdminWorkProgress.vue')
+const AdminWorkPage = () => import('./pages/admin/AdminWorkPage.vue')
 const AdminNotFound = () => import('./pages/admin/AdminNotFound.vue')
 
 export const router = createRouter({
@@ -62,14 +61,20 @@ export const router = createRouter({
           component: AdminWorkNew,
         },
         {
-          path: 'works/:id/edit',
-          name: 'admin-work-edit',
-          component: AdminWorkEdit,
+          path: 'works/:id/progress',
+          redirect: (to) => `/admin/works/${String(to.params.id)}`,
         },
         {
-          path: 'works/:id/progress',
-          name: 'admin-work-progress',
-          component: AdminWorkProgress,
+          path: 'works/:id/edit',
+          redirect: (to) => ({
+            path: `/admin/works/${String(to.params.id)}`,
+            query: { tab: 'metadata' },
+          }),
+        },
+        {
+          path: 'works/:id',
+          name: 'admin-work',
+          component: AdminWorkPage,
         },
         {
           path: ':pathMatch(.*)*',

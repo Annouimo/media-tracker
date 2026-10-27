@@ -29,7 +29,7 @@ async function save(payload: CreateWorkInput): Promise<void> {
   try {
     const result = await postCreate(payload)
     formRef.value?.markSaved()
-    await router.push(`/admin/works/${result.work.id}/progress`)
+    await router.push(`/admin/works/${result.work.id}`)
   } catch (cause) {
     serverError.value =
       cause instanceof ApiError
@@ -40,6 +40,10 @@ async function save(payload: CreateWorkInput): Promise<void> {
   } finally {
     saving.value = false
   }
+}
+
+function cancel(): void {
+  void router.push('/admin/library')
 }
 </script>
 
@@ -63,6 +67,7 @@ async function save(payload: CreateWorkInput): Promise<void> {
       :saving="saving"
       :server-error="serverError"
       @create="save"
+      @cancel="cancel"
     />
   </div>
 </template>
