@@ -109,11 +109,14 @@ watch(
     <p v-else-if="error" class="empty" role="alert">{{ error }}</p>
 
     <template v-else>
-      <section v-if="reading.length" class="reading-block" aria-labelledby="reading-label">
-        <h2 id="reading-label" class="reading-label">{{ copy.status.reading }}</h2>
-        <ul class="reading-list">
+      <section v-if="reading.length" class="section" aria-labelledby="reading-title">
+        <div class="section-head">
+          <h2 id="reading-title" class="section-title">{{ copy.status.reading }}</h2>
+          <span class="section-count">{{ reading.length }}</span>
+        </div>
+        <ul class="archive-grid">
           <li v-for="work in reading" :key="work.id" class="reading-item">
-            <RouterLink class="reading-name" :to="`/works/${work.id}`">
+            <RouterLink class="archive-link" :to="`/works/${work.id}`">
               {{ work.title }}
             </RouterLink>
             <span class="reading-progress">{{ readingProgress(work) }}</span>
@@ -129,10 +132,10 @@ watch(
           </div>
           <ul class="review-list">
             <li v-for="work in reviews" :key="work.id" class="review-item">
-              <h3 class="review-title">
+              <h3 class="review-title" :title="work.title">
                 <RouterLink :to="`/works/${work.id}`">{{ work.title }}</RouterLink>
               </h3>
-              <p class="review-text">{{ work.short_review }}</p>
+              <p class="review-text" :title="work.short_review">{{ work.short_review }}</p>
             </li>
           </ul>
         </section>
@@ -217,45 +220,11 @@ watch(
   text-underline-offset: 0.2rem;
 }
 
-.reading-block {
-  padding: 1rem 1.25rem;
-  background: var(--code-bg);
-  border-radius: var(--radius);
-}
-
-.reading-label {
-  margin: 0 0 0.5rem;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--secondary);
-}
-
-.reading-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 .reading-item {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 0.25rem 1rem;
-  padding: 0.35rem 0;
-}
-
-.reading-name {
-  min-width: 0;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.reading-name:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.25rem;
+  gap: 0.4rem 0.75rem;
 }
 
 .reading-progress {
@@ -263,6 +232,7 @@ watch(
   font-size: 13px;
   color: var(--secondary);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .section {
@@ -296,15 +266,26 @@ watch(
   list-style: none;
 }
 
+.review-item {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
 .review-item + .review-item {
-  margin-top: 1.5rem;
+  margin-top: 0.5rem;
 }
 
 .review-title {
+  flex: 0 0 auto;
+  max-width: 50%;
   margin: 0;
+  overflow: hidden;
   font-size: 18px;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .review-title a:hover {
@@ -313,15 +294,15 @@ watch(
 }
 
 .review-text {
-  display: -webkit-box;
-  margin: 0.35rem 0 0;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   overflow: hidden;
   font-size: 16px;
-  line-height: 1.7;
+  line-height: 1.6;
   color: var(--secondary);
-  white-space: pre-line;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .year-group + .year-group {
@@ -378,17 +359,20 @@ watch(
     font-size: 22px;
   }
 
-  .reading-item {
+  .review-item {
     flex-direction: column;
+    align-items: flex-start;
     gap: 0.15rem;
   }
 
-  .reading-name {
-    font-size: 18px;
+  .review-title {
+    max-width: 100%;
+    font-size: 17px;
   }
 
-  .review-title {
-    font-size: 17px;
+  .review-text {
+    flex: none;
+    width: 100%;
   }
 
   .archive-grid {
