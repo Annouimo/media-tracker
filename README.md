@@ -247,7 +247,11 @@ WHERE w.deleted_at IS NULL;
 
 #### `GET /admin/api/state`
 
-返回全部作品、当前状态和全部 logs，供 `/admin` 书架、进度页和编辑页使用。当前规模（283 本 / 迁移后约 372 条 logs）一次返回即可；后台响应 `Cache-Control: no-store`。
+返回全部作品、当前状态和全部 logs，供后台首页、书架、进度页和编辑页使用。当前规模（283 本 / 迁移后约 372 条 logs）一次返回即可；后台响应 `Cache-Control: no-store`。
+
+#### `GET /admin/api/works`
+
+返回全部作品的精简列表（`id`、`title`、`creator`、`type`），供添加/编辑页做同名同作者查重，避免拉全量 state。响应 `Cache-Control: no-store`。
 
 #### `POST /admin/api/works`
 
@@ -329,9 +333,10 @@ WHERE w.deleted_at IS NULL;
 | `/books` | 公开 | 图书分类页：当前在读 + 短评区 + 读过标题区 + 搜索 |
 | `/textbooks` | 公开 | 教材分类页；版式与 `/books` 相同 |
 | `/works/:id` | 公开 | 公开详情（摘要 + 可折叠完整记录） |
-| `/admin` | Access | 全部作品书架：搜索、筛选、排序、入口 |
-| `/admin/works/new` | Access | JSON 添加作品 |
-| `/admin/works/:id/edit` | Access | JSON 编辑元数据/短评/长评 |
+| `/admin` | Access | 后台首页：在读作品的章节格子聚合，快速记录进度 |
+| `/admin/library` | Access | 全部作品书架：搜索、筛选、排序、入口 |
+| `/admin/works/new` | Access | 表单添加作品（可切 JSON 模式） |
+| `/admin/works/:id/edit` | Access | 表单编辑元数据/短评/长评（可切 JSON 模式） |
 | `/admin/works/:id/progress` | Access | 点格子、改状态、历史、撤销 |
 
 旧 URL 不保留。后台建议作为独立入口整页加载，避免 SPA 客户端路由绕过 Access。
@@ -391,20 +396,33 @@ WHERE w.deleted_at IS NULL;
 - 不使用封面。
 - 返回链接指向作品所属分类（如「← 返回教材」）；未登记类型回退到首页。
 
-### 3.4 后台布局与书架 `/admin`
+### 3.4 后台首页 `/admin` 与书架 `/admin/library`
 
-- 后台使用独立布局：不渲染公开站的 header/footer。顶部是管理 header：
-  - 品牌“我的阅藏 · 管理”（回到 `/admin`）；
-  - 导航：书架、添加作品；
-  - 右侧：公开站点（新窗口）、主题切换、Access 邮箱、退出（`/cdn-cgi/access/logout`）。
+后台使用独立布局：不渲染公开站的 header/footer。顶部是管理 header：
+
+- 品牌“我的阅藏 · 管理”（回到 `/admin`，即后台首页）；
+- 导航：首页、书架、添加作品；
+- 右侧：公开站点（新窗口）、主题切换、Access 邮箱、退出（`/cdn-cgi/access/logout`）。
+
+**后台首页 `/admin`**：
+
+- 聚合所有 `status = reading` 作品的章节格子；点格子直接记录进度。
+- 记录日期默认今天，可改成过去的日期补录（`logged_on`，只保留日期）。
+- 每本显示书名、作者、`进度 / 总章节`、最近活动；可一键“读完”或打开进度页。
+- 未分章的在读作品显示“标记读完”。
+- 没有在读作品时提示并链接到书架。
+- 记录成功/读完用 toast 提示。
+
+**书架 `/admin/library`**：
+
 - 全部作品（含想读、在读、搁置、弃读、已读完）。
 - 搜索：书名/作者。
 - 筛选：分类、状态、年份、是否设置章节数、是否有短评；有筛选条件时显示“清除筛选”。
 - 排序：最近活动、添加时间、书名、读完时间。
 - 表格列：作品、分类、作者、状态、进度、最近活动、添加、读完、短评、操作。
 - 每行入口：进度、编辑；公开作品的书名链接到公开详情。
+- 桌面端表头 sticky；≤768px 改为卡片列表（保留作品、分类、状态、进度、最近活动、操作）。
 - 视觉沿用 PaperMod token；后台内容宽度 1200px。
-- 窄屏（≤900px）隐藏作者、添加、读完、短评四列，保留可操作的列。
 - admin 路由懒加载：公开首屏不包含后台代码。
 
 ### 3.5 添加 / 编辑作品
@@ -417,12 +435,13 @@ WHERE w.deleted_at IS NULL;
 - 同 title + creator 时警告，但允许继续。
 - “JSON 模式”可切换到原始 JSON 编辑（新建用 create schema，编辑用 update schema），应用时校验；适合特殊字段或粘贴。
 - 有未保存修改时，离开页面或关闭标签会提示。
-- 新建保存后进入进度页；编辑保存后原地提示“已保存”。
+- 新建保存后进入进度页；编辑保存后用 toast 提示“已保存”。
 - 编辑模式不显示状态/进度/读完日期；这些只读，入口链接到进度页，避免绕过 log 快照。
 
 ### 3.6 进度页 `/admin/works/:id/progress`
 
-- 顶部：书名、作者/年份/类型/最近活动。
+- 顶部面包屑：书架 / 书名 / 进度；公开作品旁边有「公开页 ↗」。
+- 顶部：书名、作者/年份/分类/最近活动。
 - sticky 操作栏：当前状态 + 进度、状态按钮、记录日期。
   - 记录日期默认今天；改成过去的日期可以补录（补录写 `logged_on`，只保留日期，不写时间）。
 - 章节格子：
@@ -501,10 +520,10 @@ WHERE w.deleted_at IS NULL;
 │   ├── main.ts
 │   ├── router.ts
 │   ├── style.css
-│   ├── components/      # SiteHeader / AdminHeader / WorkPreview / WorkForm
+│   ├── components/      # SiteHeader / AdminHeader / WorkPreview / WorkForm / ChapterGrid
 │   ├── layouts/         # PublicLayout / AdminLayout
 │   ├── lib/
-│   └── pages/           # PublicHome / PublicWork / admin
+│   └── pages/           # PublicHome / PublicWork / admin（Dashboard / Library / ...）
 ├── shared/              # 共享类型、Zod schema、日期工具、分类注册表
 ├── worker/              # Cloudflare Worker / API
 │   ├── index.ts
@@ -574,7 +593,7 @@ bun run typecheck:test
 
 CI 在 `.github/workflows/ci.yml`：Bun 1.4.3 + Node 22，执行 typecheck、typecheck:test、test、build。
 
-M1–M6 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（6 本 / 9 条 log），不接触生产数据。当前 69 个测试全部通过。
+M1–M6 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（6 本 / 9 条 log），不接触生产数据。当前 72 个测试全部通过。
 
 ### 5.4 D1
 
