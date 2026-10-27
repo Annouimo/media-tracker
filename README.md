@@ -3,7 +3,7 @@
 一个单用户的阅读 / 动画档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人作品库**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M1–M10 已部署到生产（`gallery.annouimo.com`）；Cloudflare Access 应用还需把 Domain 更新为 `gallery.annouimo.com`
+- 当前状态：M1–M11 已部署到生产（`gallery.annouimo.com`）；`/admin` 由 Cloudflare Access 保护（302）
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -822,4 +822,16 @@ DEV_AUTH_BYPASS=1
 - 站点名改为「Annouimo 的陈列室」；生产域名 `gallery.annouimo.com`
 - CI 通过（typecheck / 79 个测试 / build）；main 自动部署
 - 生产验证：新品牌已上线；`/api/health` 200；`/api/public/categories/book` 200
-- 注意：Access 应用要把 Domain 更新为 `gallery.annouimo.com`；`/admin` 目前返回 200，`/admin/api/state` 仍 401
+- Access 应用 Domain 已在后续更新为 `gallery.annouimo.com`；`/admin` 现在 302 到 Cloudflare Access（M11 确认）
+
+### 2026-10-27 — M11 公开细节、导航与图标收尾
+
+- release merge：`69b4dfd`（`dev` → `main`）
+- 公开首页：section 计数紧贴标题；手机端短评与书名同行
+- 手机端：页面标题 40px、logo 24px/700、主区 14px + 页头 24px 顶部留白、菜单间距 14px，与博客一致
+- 顶栏：新增「博客 ↗」外链（复刻博客「陈列室 ↗」的图标与样式）；搜索从放大镜改为「搜索」文字按钮；修正导航基线
+- 公开详情：完整记录默认全量展开，去掉 details 与全部分割线
+- 新 favicon：深紫圆角方块 + 黄铜 A 展架（`public/favicon.svg`）
+- 初始 log：默认 wish 不创建；仅补录非 wish 初始状态时创建（文档已明确）
+- CI 通过（typecheck / 79 个测试 / build）；main 自动部署
+- 生产验证：新 favicon 已上线；`/api/health` 200；`/admin` 302 到 Cloudflare Access
