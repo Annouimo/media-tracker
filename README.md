@@ -478,10 +478,16 @@ WHERE w.deleted_at IS NULL;
 ├── public/              # 静态资源、_headers、favicon
 ├── migrations/          # D1 migrations
 │   └── 0001_init.sql
-├── scripts/             # 一次性数据转换/迁移脚本
-│   └── transform-legacy.ts
+├── scripts/             # 数据转换与 D1 辅助脚本
+│   ├── transform-legacy.ts
+│   ├── d1.ts
+│   ├── verify-d1.sql
+│   └── wrangler-config.ts
+├── docs/
+│   └── implementation-plan.md
 ├── archive/             # 旧代码/旧数据 + archive/import/（gitignored）
 ├── reference/           # PaperMod 参考主题（gitignored）
+├── .env.example
 ├── wrangler.jsonc
 ├── vite.config.ts
 ├── tsconfig.json
@@ -489,43 +495,99 @@ WHERE w.deleted_at IS NULL;
 └── README.md
 ```
 
-当前 `wrangler.jsonc` 尚未绑定 D1；创建数据库后把 `database_id` 加进去。
+D1 binding 和 custom domain 在构建时由环境变量注入，不在 `wrangler.jsonc` 里硬编码；`wrangler.generated.jsonc` 由脚本生成，gitignored。
 
 ---
 
 ## 5. 本地开发
 
+### 5.1 环境变量
+
+D1 和子域都是部署配置，不写死在 `wrangler.jsonc`：
+
 ```bash
-bun install
-bun run dev
+cp .env.example .env.local
+# 填 D1_DATABASE_ID / D1_DATABASE_NAME
 ```
 
-其他命令：
+`.env.local` 已被 `.gitignore` 忽略。`PUBLIC_HOST` 本地通常留空；生产在 Workers Builds 里设置。
+
+### 5.2 安装与运行
+
+```bash
+bun install
+bun run dev        # Workers 本地请求转发需要 Node，见下
+bun run dev:node   # 已安装 Node 时的替代命令
+```
+
+Cloudflare 当前的 Miniflare 请求转发依赖 undici dispatcher，Bun 的 `fetch()` 会忽略它。因此：
+
+- `bun run build`、`bun run typecheck`、D1 CLI 命令可以正常用 Bun；
+- `vite dev` / `wrangler dev` 的本地请求转发需要 Node；
+- 没有 Node 时，本地开发暂时只能跑 build/静态检查，不能点开本地页面。
+
+### 5.3 其他命令
 
 ```bash
 bun run typecheck   # vue-tsc + tsc(worker)
-bun run build       # 类型检查 + vite build
+bun run build       # 类型检查 + vite build（需要 D1 环境变量）
 bun run preview     # build 后预览
-bun run deploy      # build + wrangler deploy
+bun run deploy      # 本地手动 build + wrangler deploy（备用）
+bun run deploy:ci   # Workers Builds 的 deploy command
 ```
 
-创建 D1：
+### 5.4 D1
+
+已有 D1 数据库，不需要再 `d1 create`。本地：
 
 ```bash
-bunx wrangler d1 create media-tracker
-# 把返回的 database_id 写入 wrangler.jsonc 的 d1_databases
 bun run db:migrate:local
+bun run db:seed:local   # 从 archive/import/*.sql 导入本地数据
+```
+
+`scripts/d1.ts` 会从环境变量读取数据库名，并生成 gitignored 的 `wrangler.generated.jsonc` 给 Wrangler CLI 用。远程：
+
+```bash
+# 需要 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID
 bun run db:migrate:remote
 ```
 
-本地 Access bypass（仅本地）：
+### 5.5 Workers Builds（GitHub 自动部署）
+
+Cloudflare Dashboard → Workers & Pages → Connect to Git：
+
+| 设置 | 值 |
+|---|---|
+| Repository / branch | 你的 GitHub 仓库 / `main` |
+| Build command | `bun run build` |
+| Deploy command | `bun run deploy:ci` |
+| Root directory | `/` |
+
+Build variables：
+
+```text
+D1_DATABASE_ID=<cloudflare-d1-id>
+D1_DATABASE_NAME=<cloudflare-d1-name>
+PUBLIC_HOST=media-tracker.annouimo.com
+```
+
+说明：
+
+- `D1_DATABASE_ID` / `D1_DATABASE_NAME` / `PUBLIC_HOST` 只作为构建变量，不是 Worker runtime vars。
+- `PUBLIC_HOST` 在 Workers Builds 中是必填的；缺失时构建会失败，避免无意部署到错误域名。
+- `package.json` 的 `packageManager` 固定 Bun；`bun.lock` 决定依赖安装。
+- Vite 插件在构建时生成 `dist/media_tracker/wrangler.json`，其中包含 D1 binding 和 custom domain route；`wrangler deploy` 使用它。
+- 自定义域名由构建配置生成，不在源码里硬编码。首次部署后 Cloudflare 会创建 `media-tracker.annouimo.com` 的 custom domain。
+- Access 策略不在 M0 配置；M3 再给 `/admin/*` 和 `/api/admin/*` 加 Access。
+
+本地 Access bypass（仅本地，M3 使用）：
 
 ```bash
 # .dev.vars
 DEV_AUTH_BYPASS=1
 ```
 
-构建输出：
+### 5.6 构建输出
 
 - `dist/client/`：静态资源
 - `dist/media_tracker/`：Worker bundle + 生成后的 wrangler 配置

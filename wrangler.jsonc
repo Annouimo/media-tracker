@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "media-tracker",
-  "compatibility_date": "2026-10-27",
+  "compatibility_date": "2026-10-26",
   "main": "./worker/index.ts",
   "upload_source_maps": true,
   "assets": {
@@ -12,18 +12,15 @@
     "enabled": true
   }
 
-  // D1 is intentionally not bound yet.
+  // D1 binding and the production custom domain are intentionally NOT
+  // hardcoded here. They are injected by vite.config.ts from:
   //
-  // After creating the database:
-  //   wrangler d1 create media-tracker
+  //   D1_DATABASE_ID
+  //   D1_DATABASE_NAME
+  //   PUBLIC_HOST
   //
-  // add the returned database_id below and remove this comment block:
-  //
-  // "d1_databases": [
-  //   {
-  //     "binding": "DB",
-  //     "database_name": "media-tracker",
-  //     "database_id": "<database-id>"
-  //   }
-  // ]
+  // Local development reads .env.local. Workers Builds reads the build
+  // variables configured in the Cloudflare dashboard. The generated Worker
+  // configuration in dist/media_tracker/wrangler.json is what Wrangler uses
+  // for preview/deploy.
 }

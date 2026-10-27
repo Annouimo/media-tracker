@@ -3,14 +3,20 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "bun@1.4.3",
   "scripts": {
     "dev": "vite",
+    "dev:node": "node node_modules/vite/bin/vite.js",
     "build": "bun run typecheck && vite build",
     "preview": "bun run build && vite preview",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
     "deploy": "bun run build && wrangler deploy",
-    "db:migrate:local": "wrangler d1 migrations apply media-tracker --local",
-    "db:migrate:remote": "wrangler d1 migrations apply media-tracker --remote"
+    "deploy:ci": "wrangler deploy",
+    "db:migrate:local": "bun run scripts/d1.ts migrate:local",
+    "db:migrate:remote": "bun run scripts/d1.ts migrate:remote",
+    "db:seed:local": "bun run scripts/d1.ts seed:local",
+    "db:verify:local": "bun run scripts/d1.ts verify:local",
+    "db:verify:remote": "bun run scripts/d1.ts verify:remote"
   },
   "dependencies": {
     "hono": "^4.13.14",
