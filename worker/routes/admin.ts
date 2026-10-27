@@ -7,7 +7,7 @@ import {
   statusInputSchema,
   updateWorkSchema,
 } from '../../shared/schemas'
-import { getAdminState, getLatestLog, getWorkWithState, listLogsForWork } from '../db/queries'
+import { getAdminState, getLatestLog, getWorkWithState, listLogsForWork, listWorksWithState } from '../db/queries'
 import {
   createWorkWithInitialLog,
   setProgress,
@@ -68,6 +68,19 @@ adminRoutes.get('/state', async (c) => {
 adminRoutes.get('/me', (c) => {
   noStore(c)
   return c.json({ email: c.get('accessEmail') })
+})
+
+adminRoutes.get('/works', async (c) => {
+  const works = await listWorksWithState(c.env.MEDIA_TRACKER_DB)
+  noStore(c)
+  return c.json({
+    works: works.map((work) => ({
+      id: work.id,
+      title: work.title,
+      creator: work.creator,
+      type: work.type,
+    })),
+  })
 })
 
 adminRoutes.post('/works', async (c) => {

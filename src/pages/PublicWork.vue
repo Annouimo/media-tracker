@@ -14,6 +14,10 @@ const error = ref('')
 
 const work = computed(() => detail.value?.work ?? null)
 const logs = computed(() => detail.value?.logs ?? [])
+const typeLabel = computed(() => {
+  const type = work.value?.type
+  return type ? (categoryForType(type)?.label ?? type) : ''
+})
 const backCategory = computed(() => {
   const type = work.value?.type
   return type ? categoryForType(type) : undefined
@@ -77,7 +81,7 @@ watch(
         <p class="meta">
           <span v-if="work.creator">{{ work.creator }}</span>
           <span v-if="work.release_year">{{ work.release_year }}</span>
-          <span>{{ work.type }}</span>
+          <span>{{ typeLabel }}</span>
           <span>{{ statusLabel(work.status) }}</span>
           <span v-if="work.finished_on">读完于 {{ work.finished_on }}</span>
         </p>

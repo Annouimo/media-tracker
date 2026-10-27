@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { categoryForType } from '../../../shared/categories'
 import { STATUS_LABELS, STATUS_ORDER } from '../../../shared/constants'
 import { localDayFromEpoch } from '../../../shared/dates'
 import type { AdminState, WorkWithState } from '../../../shared/types'
 import { getAdminState } from '../../lib/admin-api'
+import { relativeDay } from '../../lib/format'
 import { ApiError } from '../../lib/http'
 
 const data = ref<AdminState | null>(null)
@@ -27,6 +29,29 @@ const yearOptions = computed(() =>
   [...new Set(works.value.map((work) => work.release_year).filter((year): year is number => year !== null))]
     .sort((a, b) => b - a),
 )
+
+const hasFilters = computed(
+  () =>
+    query.value.trim() !== '' ||
+    statusFilter.value !== 'all' ||
+    typeFilter.value !== 'all' ||
+    chapterFilter.value !== 'all' ||
+    yearFilter.value !== 'all' ||
+    reviewFilter.value !== 'all',
+)
+
+function clearFilters(): void {
+  query.value = ''
+  statusFilter.value = 'all'
+  typeFilter.value = 'all'
+  chapterFilter.value = 'all'
+  yearFilter.value = 'all'
+  reviewFilter.value = 'all'
+}
+
+function typeLabel(type: string): string {
+  return categoryForType(type)?.label ?? type
+}
 
 const filtered = computed(() => {
   const normalized = query.value.trim().toLowerCase()
@@ -135,10 +160,12 @@ onMounted(async () => {
       </label>
 
       <label>
-        <span class="sr-only">类型</span>
+        <span class="sr-only">分类</span>
         <select v-model="typeFilter">
-          <option value="all">全部类型</option>
-          <option v-for="type in typeOptions" :key="type" :value="type">{{ type }}</option>
+          <option value="all">全部分类</option>
+          <option v-for="type in typeOptions" :key="type" :value="type">
+            {{ typeLabel(type) }}
+          </option>
         </select>
       </label>
 
@@ -177,6 +204,10 @@ onMounted(async () => {
           <option value="finished">读完时间</option>
         </select>
       </label>
+
+      <button v-if="hasFilters" class="clear-filters" type="button" @click="clearFilters">
+        清除筛选
+      </button>
     </div>
 
     <p v-if="loading" class="empty">正在加载…</p>
@@ -188,6 +219,7 @@ onMounted(async () => {
         <thead>
           <tr>
             <th>作品</th>
+            <th>分类</th>
             <th>作者</th>
             <th>状态</th>
             <th>进度</th>
@@ -200,20 +232,27 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr v-for="work in filtered" :key="work.id">
-            <td class="title">
+            <td class="title" data-label="作品">
               <RouterLink v-if="isPublic(work)" :to="`/works/${work.id}`">
                 {{ work.title }}
               </RouterLink>
               <span v-else>{{ work.title }}</span>
             </td>
-            <td>{{ work.creator || '—' }}</td>
-            <td>{{ STATUS_LABELS[work.state.status] }}</td>
-            <td class="num">{{ progressText(work) }}</td>
-            <td class="num">{{ work.state.loggedOn ?? '—' }}</td>
-            <td class="num">{{ day(work.added_at) }}</td>
-            <td class="num">{{ work.state.finishedOn ?? '—' }}</td>
-            <td>{{ work.short_review ? '有' : '—' }}</td>
-            <td>
+            <td class="category" data-label="分类">{{ typeLabel(work.type) }}</td>
+            <td data-label="作者">{{ work.creator || '—' }}</td>
+            <td data-label="状态">{{ STATUS_LABELS[work.state.status] }}</td>
+            <td class="num" data-label="进度">{{ progressText(work) }}</td>
+            <td
+              class="num"
+              data-label="最近活动"
+              :title="work.state.loggedOn ?? undefined"
+            >
+              {{ work.state.loggedOn ? relativeDay(work.state.loggedOn) : '—' }}
+            </td>
+            <td class="num" data-label="添加">{{ day(work.added_at) }}</td>
+            <td class="num" data-label="读完">{{ work.state.finishedOn ?? '—' }}</td>
+            <td data-label="短评">{{ work.short_review ? '有' : '—' }}</td>
+            <td class="actions" data-label="操作">
               <RouterLink class="action" :to="`/admin/works/${work.id}/progress`">
                 进度
               </RouterLink>
@@ -293,6 +332,22 @@ onMounted(async () => {
   border-color: var(--primary);
 }
 
+.clear-filters {
+  align-self: center;
+  padding: 0 0.2rem;
+  font-size: 13px;
+  color: var(--secondary);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.clear-filters:hover {
+  color: var(--primary);
+}
+
 .table-wrap {
   overflow-x: auto;
   border-top: 1px solid var(--border);
@@ -334,6 +389,10 @@ onMounted(async () => {
   font-variant-numeric: tabular-nums;
 }
 
+.admin-table td.category {
+  color: var(--secondary);
+}
+
 .admin-table .action {
   color: var(--secondary);
 }
@@ -353,6 +412,34 @@ onMounted(async () => {
   color: var(--secondary);
 }
 
+@media (max-width: 900px) {
+  /* Keep the table usable on small screens by dropping secondary columns. */
+  .admin-table th:nth-child(3),
+  .admin-table td:nth-child(3),
+  .admin-table th:nth-child(7),
+  .admin-table td:nth-child(7),
+  .admin-table th:nth-child(8),
+  .admin-table td:nth-child(8),
+  .admin-table th:nth-child(9),
+  .admin-table td:nth-child(9) {
+    display: none;
+  }
+}
+
+@media (min-width: 1000px) {
+  .table-wrap {
+    overflow: visible;
+  }
+
+  .admin-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--theme);
+    box-shadow: inset 0 -1px 0 var(--border);
+  }
+}
+
 @media (max-width: 768px) {
   .admin-header h1 {
     font-size: 32px;
@@ -360,6 +447,65 @@ onMounted(async () => {
 
   .toolbar label.search {
     flex-basis: 100%;
+  }
+
+  .table-wrap {
+    overflow: visible;
+  }
+
+  .admin-table {
+    white-space: normal;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table,
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table tr {
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .admin-table td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.2rem 0;
+    border: 0;
+  }
+
+  .admin-table td::before {
+    flex: none;
+    font-size: 12px;
+    color: var(--secondary);
+    content: attr(data-label);
+  }
+
+  .admin-table td.title {
+    display: block;
+    padding-bottom: 0.45rem;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .admin-table td.title::before,
+  .admin-table td.actions::before {
+    display: none;
+  }
+
+  .admin-table td.actions {
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 0.45rem;
   }
 }
 </style>

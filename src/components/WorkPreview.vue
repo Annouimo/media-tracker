@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { categoryForType } from '../../shared/categories'
 import { STATUS_LABELS } from '../../shared/constants'
 import type { WorkStatus } from '../../shared/types'
 
@@ -27,6 +28,10 @@ const status = computed<WorkStatus>(
   () => props.data?.status ?? props.currentStatus ?? 'wish',
 )
 const total = computed(() => props.data?.total_progress ?? 1)
+const typeLabel = computed(() => {
+  const type = props.data?.type ?? ''
+  return type ? (categoryForType(type)?.label ?? type) : ''
+})
 const progress = computed(() => {
   if (props.mode === 'edit') return props.currentProgress ?? 0
   return props.data?.progress ?? (status.value === 'done' ? total.value : 0)
@@ -53,7 +58,7 @@ const initialLogText = computed(() => {
       <p class="preview-meta">
         <span v-if="data.creator">{{ data.creator }}</span>
         <span v-if="data.release_year">{{ data.release_year }}</span>
-        <span>{{ data.type || 'Book' }}</span>
+        <span>{{ typeLabel }}</span>
         <span>{{ STATUS_LABELS[status] }}</span>
       </p>
       <p class="preview-progress">{{ progressText }}</p>

@@ -23,6 +23,9 @@ export type Work = {
   deleted_at: number | null
 }
 
+/** Minimal work fields for duplicate checks and pickers. */
+export type WorkSummary = Pick<Work, 'id' | 'title' | 'creator' | 'type'>
+
 export type Log = {
   id: string
   work_id: string

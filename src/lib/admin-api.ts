@@ -10,11 +10,16 @@ import type {
   AdminState,
   AdminUndoResult,
   AdminWorkDetail,
+  WorkSummary,
 } from '../../shared/types'
 import { getJson, requestJson } from './http'
 
 export function getAdminState(): Promise<AdminState> {
   return getJson<AdminState>('/admin/api/state')
+}
+
+export function getWorkSummaries(): Promise<{ works: WorkSummary[] }> {
+  return getJson<{ works: WorkSummary[] }>('/admin/api/works')
 }
 
 export function getAdminWork(id: string): Promise<AdminWorkDetail> {
