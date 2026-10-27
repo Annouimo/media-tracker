@@ -4,6 +4,7 @@
   "compatibility_date": "2026-10-26",
   "main": "./worker/index.ts",
   "upload_source_maps": true,
+  "workers_dev": false,
   "assets": {
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
@@ -12,10 +13,11 @@
     "enabled": true
   }
 
-  // D1 is intentionally NOT configured here. Bind the existing D1 database
-  // in the Cloudflare dashboard with the binding name MEDIA_TRACKER_DB.
+  // D1 and custom domains are managed in the Cloudflare dashboard.
   //
-  // The public custom domain remains deployment configuration: vite.config.ts
-  // injects it from PUBLIC_HOST when set. The generated Worker configuration
-  // in dist/media_tracker/wrangler.json is what Wrangler uses for deploy.
+  // Bind the existing D1 database with the binding name MEDIA_TRACKER_DB.
+  // Attach one or more custom domains under Domains & Routes.
+  //
+  // `workers_dev` is false and there are no `routes` keys here so that
+  // `wrangler deploy` does not override dashboard-managed domains.
 }

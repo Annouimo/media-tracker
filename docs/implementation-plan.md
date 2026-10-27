@@ -119,11 +119,12 @@
 
 ### 2.4 自定义域名与部署
 
-- [x] 子域不写死在源码；`vite.config.ts` 从 `PUBLIC_HOST` 注入 `routes: [{ pattern, custom_domain: true }]`。
-- [x] `PUBLIC_HOST` 在 Workers Builds 中必填；缺失时构建故意失败。
+- [x] 域名完全由 Cloudflare Dashboard 管理，不进入构建配置，也没有 `PUBLIC_HOST`。
+- [x] `wrangler.jsonc` 不含 `routes`，并设置 `workers_dev: false`；按 Cloudflare 文档，这样 `wrangler deploy` 不会覆盖 dashboard 域名。
+- [x] 一个 Worker 可以绑定多个域名；增加域名只需在 Domains & Routes 里 Add Custom Domain。
 - [x] `package.json` 设置 `packageManager: bun@1.4.3`，适配 Workers Builds 的 Bun 工具链。
 - [x] 部署方式确定为 Cloudflare Workers Builds 连接 GitHub，自动构建/部署。
-- [ ] 在 Cloudflare Dashboard 连接 GitHub 仓库，配置 build/deploy command 和 build variables（见 README 5.5）。
+- [ ] 在 Cloudflare Dashboard 连接 GitHub 仓库，配置 build/deploy command（见 README 5.5）。
 - [ ] 首次部署创建 `media-tracker.annouimo.com` custom domain。
 - [ ] Access application（M3）：`/admin/*`、`/api/admin/*`。
 
@@ -133,7 +134,7 @@ Workers Builds 目标配置：
 |---|---|
 | Build command | `bun run build` |
 | Deploy command | `bun run deploy:ci` |
-| Build variables | `PUBLIC_HOST`（D1 不在 build variables，走 Dashboard `MEDIA_TRACKER_DB`） |
+| Build variables | 无 |
 
 ### 2.5 本地开发运行时
 
@@ -150,7 +151,7 @@ Cloudflare 当前的 Miniflare 请求转发依赖 undici dispatcher，Bun 的 `f
 - [ ] 后续 E2E 再加 `@playwright/test`。
 - [ ] `tsconfig.json` / `tsconfig.worker.json` 都 include `shared/**/*.ts`。
 
-**M0 验收**：远程 D1 已跑出 283/372、79 个有日志作品、204/2/51/26/0；Worker 已改用 Dashboard `MEDIA_TRACKER_DB`；子域由 `PUBLIC_HOST` 注入；部署验证待重新绑定/重新部署；Access 在 M3。
+**M0 验收**：远程 D1 已跑出 283/372、79 个有日志作品、204/2/51/26/0；Worker 已改用 Dashboard `MEDIA_TRACKER_DB`；域名由 Dashboard 管理且构建无域名/D1 环境变量；部署验证待重新部署；Access 在 M3。
 
 ---
 

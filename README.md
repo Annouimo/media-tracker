@@ -485,7 +485,6 @@ WHERE w.deleted_at IS NULL;
 │   └── implementation-plan.md
 ├── archive/             # 旧代码/旧数据 + archive/import/（gitignored）
 ├── reference/           # PaperMod 参考主题（gitignored）
-├── .env.example
 ├── wrangler.jsonc
 ├── vite.config.ts
 ├── tsconfig.json
@@ -493,7 +492,7 @@ WHERE w.deleted_at IS NULL;
 └── README.md
 ```
 
-D1 不写入 `wrangler.jsonc`，而是在 Cloudflare Dashboard 绑定为 `MEDIA_TRACKER_DB`；custom domain 由 `PUBLIC_HOST` 构建变量生成。
+D1 和自定义域名都在 Cloudflare Dashboard 管理：D1 binding 名为 `MEDIA_TRACKER_DB`，自定义域名在 Domains & Routes 绑定。
 
 ---
 
@@ -501,20 +500,11 @@ D1 不写入 `wrangler.jsonc`，而是在 Cloudflare Dashboard 绑定为 `MEDIA_
 
 ### 5.1 环境变量
 
-D1 不再通过环境变量提供。请在 Cloudflare Dashboard 把 D1 数据库绑定到 Worker，binding name 用 **`MEDIA_TRACKER_DB`**：
+**构建不需要任何域名或 D1 环境变量。**
 
-```ts
-env.MEDIA_TRACKER_DB.prepare(...)
-```
-
-只有自定义域名仍是构建配置：
-
-```bash
-cp .env.example .env.local
-# PUBLIC_HOST=media-tracker.annouimo.com
-```
-
-`.env.local` 已被 `.gitignore` 忽略。`PUBLIC_HOST` 本地通常留空；生产在 Workers Builds 里设置。
+- D1 在 Cloudflare Dashboard → Worker → Settings → Bindings 绑定，binding name 为 `MEDIA_TRACKER_DB`。
+- 自定义域名在 Workers & Pages → Worker → Settings → Domains & Routes 绑定；一个 Worker 可以绑多个域名，代码不需要知道。
+- `wrangler.jsonc` 设置了 `workers_dev = false` 且不包含 `routes`，这样 `wrangler deploy` 不会覆盖 dashboard 管理的域名。
 
 ### 5.2 安装与运行
 
@@ -534,7 +524,7 @@ Cloudflare 当前的 Miniflare 请求转发依赖 undici dispatcher，Bun 的 `f
 
 ```bash
 bun run typecheck   # vue-tsc + tsc(worker)
-bun run build       # 类型检查 + vite build（需要 PUBLIC_HOST 才能生成 custom domain route）
+bun run build       # 类型检查 + vite build（无域名/D1 环境变量依赖）
 bun run preview     # build 后预览
 bun run deploy      # 本地手动 build + wrangler deploy（备用）
 bun run deploy:ci   # Workers Builds 的 deploy command
@@ -567,26 +557,30 @@ Cloudflare Dashboard → Workers & Pages → Connect to Git：
 | Deploy command | `bun run deploy:ci` |
 | Root directory | `/` |
 
-Build variables：
+**不需要 Build variables。**
 
-```text
-PUBLIC_HOST=media-tracker.annouimo.com
-```
-
-**D1 不在 build variables 里**。在 Worker 的 **Settings → Bindings** 添加 D1 database binding：
+在 Worker 的 **Settings → Bindings** 添加：
 
 ```text
 Variable name: MEDIA_TRACKER_DB
 D1 database: media-tracker-db
 ```
 
+在 **Settings → Domains & Routes** 绑定域名：
+
+```text
+media-tracker.annouimo.com
+```
+
+要加第二个域名，就在同一个地方继续 Add Custom Domain；不需要改代码，也不需要重新设置构建变量。
+
 说明：
 
-- `PUBLIC_HOST` 只是构建变量，不是 Worker runtime var；缺失时 Workers Builds 会失败。
+- `wrangler.jsonc` 里没有 `routes`，并设置 `workers_dev: false`；Cloudflare 文档说明这样可以让域名完全由 dashboard 管理。
 - `package.json` 的 `packageManager` 固定 Bun；`bun.lock` 决定依赖安装。
-- Vite 插件在构建时生成 `dist/media_tracker/wrangler.json`，其中包含 custom domain route；D1 binding 由 Dashboard 提供。
-- 自动部署使用 `wrangler deploy`；部署后务必访问 `/api/health`，确认返回 `{"ok":true,"db":"ok"}`。如果 Wrangler 覆盖了 dashboard-only binding，我们会改用显式 D1 binding 配置再处理。
-- 自定义域名由构建配置生成，不在源码里硬编码。
+- Vite 插件生成的 `dist/media_tracker/wrangler.json` 不包含 D1 binding 或 custom domain route。
+- 自动部署使用 `wrangler deploy`；部署后访问 `/api/health`，确认返回 `{"ok":true,"db":"ok"}`。
+- 如果 `wrangler deploy` 覆盖了 dashboard-only D1 binding，健康检查会返回 503；到时再处理 D1 binding，但域名部分不会再被覆盖。
 - Access 策略不在 M0 配置；M3 再给 `/admin/*` 和 `/api/admin/*` 加 Access。
 
 本地 Access bypass（仅本地，M3 使用）：
