@@ -140,7 +140,7 @@ Workers Builds 目标配置：
 - `main`：稳定发布，Cloudflare Production branch。
 - `dev`：日常开发分支；M1+ 都提交到 `dev`。
 - Cloudflare 启用 Preview Builds；Preview command = `bun run preview:ci`。
-- `dev` push 后预览地址：`dev-media-tracker.keen18906416.workers.dev`（模式 `*-media-tracker.keen18906416.workers.dev`）。
+- `dev` push 后预览地址：`dev.media-tracker.annouimo.com`（模式 `dev.media-tracker.annouimo.com`）。
 - Previews 不继承 production 设置；`wrangler.jsonc` 的 `previews` 块提供 D1 binding。当前指向同一个 D1，写功能上线前换独立 preview D1。
 
 ### 2.5 本地开发运行时
@@ -298,6 +298,19 @@ src/lib/api.ts
 - 长评链接 `target="_blank" rel="noopener noreferrer"`。
 
 **M2 验收**：公开 API 不泄露 wish / 仅 paused；首页三块与详情在桌面/手机正常；重读作品同时出现在“在读”和“读过”。
+
+### 4.3 M2 完成记录（dev）
+
+- `worker/routes/public.ts`：`/api/public/home`、`/api/public/works/:id`、ETag/304
+- `worker/lib/etag.ts`
+- `src/router.ts`、`src/lib/api.ts`、`src/lib/format.ts`
+- `src/pages/PublicHome.vue`、`PublicWork.vue`、`NotFound.vue`
+- `src/components/SiteHeader.vue`、`SiteFooter.vue`、`ThemeToggle.vue`
+- 首页：当前在读、短评、读过 2 列、客户端搜索
+- 详情：摘要 + 可折叠完整记录
+- `test/api/public.test.ts`：公开 API/404/ETag/health
+- `bun run test`：32 passed
+- 本地 `dev.media-tracker.annouimo.com` 已验证 health；公开 API 已用完整本地数据验证（Great Expectations / The Week Junior 在读，51 本读过）
 
 ---
 

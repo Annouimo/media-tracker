@@ -3,7 +3,7 @@
 一个单用户的阅读档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人书架**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M1 已完成（共享类型、状态机、D1 查询层、领域/DB 测试）；公开 API/UI 尚未接入
+- 当前状态：M2 已完成（公开 API、首页、公开详情、搜索）；后台/写入尚未接入
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -34,7 +34,7 @@
   - Production branch = `main`
   - 启用 Preview Builds
   - Preview command = `bun run preview:ci`
-  - `dev` push 后预览地址形如 `dev-media-tracker.keen18906416.workers.dev`
+  - `dev` push 后预览地址形如 `dev.media-tracker.annouimo.com`
 - Previews 不继承 production 设置；`wrangler.jsonc` 的 `previews` 块提供 D1 binding。当前 preview 指向同一个 D1，写功能上线前应换成独立 preview D1。
 
 ---
@@ -548,7 +548,7 @@ bun run test        # Vitest + Workers pool（用测试用 D1 fixture）
 bun run typecheck:test
 ```
 
-M1 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（5 本 / 8 条 log），不接触生产数据。当前 27 个测试全部通过。
+M1/M2 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（5 本 / 8 条 log），不接触生产数据。当前 32 个测试全部通过。
 
 ### 5.4 D1
 

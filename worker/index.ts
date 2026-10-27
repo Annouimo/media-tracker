@@ -1,14 +1,8 @@
 import { Hono } from 'hono'
+import { publicRoutes } from './routes/public'
+import type { Bindings } from './types'
 
-/**
- * Worker bindings.
- *
- * `MEDIA_TRACKER_DB` is declared in `wrangler.jsonc` so every deploy includes
- * it. The binding name is part of our runtime contract.
- */
-export type Bindings = {
-  MEDIA_TRACKER_DB: D1Database
-}
+export type { Bindings } from './types'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -43,7 +37,20 @@ app.get('/api/health', async (c) => {
   }
 })
 
-// Placeholder: business routes are implemented in later milestones.
+app.route('/api/public', publicRoutes)
+
+// Placeholder for admin routes, implemented in M3+.
 app.all('/api/*', (c) => c.json({ error: 'not_implemented' }, 501))
+
+app.onError((error, c) => {
+  console.error(error)
+  return c.json(
+    {
+      error: 'internal_error',
+      message: 'Internal server error',
+    },
+    500,
+  )
+})
 
 export default app
