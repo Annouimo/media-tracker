@@ -1,5 +1,5 @@
 import { Hono, type Context } from 'hono'
-import { getPublicWork, publicHome } from '../db/queries'
+import { getPublicWork, publicCategory } from '../db/queries'
 import { makeEtag } from '../lib/etag'
 import type { Bindings } from '../types'
 
@@ -21,8 +21,14 @@ async function jsonWithCache(c: Context<{ Bindings: Bindings }>, data: unknown):
   })
 }
 
-publicRoutes.get('/home', async (c) => {
-  const data = await publicHome(c.env.MEDIA_TRACKER_DB)
+publicRoutes.get('/categories/:slug', async (c) => {
+  const data = await publicCategory(c.env.MEDIA_TRACKER_DB, c.req.param('slug'))
+  if (!data) {
+    return c.json({
+      error: 'not_found',
+      message: 'Category not found',
+    }, 404)
+  }
   return jsonWithCache(c, data)
 })
 

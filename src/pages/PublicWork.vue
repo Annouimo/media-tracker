@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { categoryForType } from '../../shared/categories'
 import type { PublicWorkDetail } from '../../shared/types'
 import { ApiError, getPublicWork } from '../lib/api'
 import { describeLog, progressSummary, statusLabel } from '../lib/format'
@@ -13,6 +14,10 @@ const error = ref('')
 
 const work = computed(() => detail.value?.work ?? null)
 const logs = computed(() => detail.value?.logs ?? [])
+const backCategory = computed(() => {
+  const type = work.value?.type
+  return type ? categoryForType(type) : undefined
+})
 
 async function load(id: string): Promise<void> {
   loading.value = true
@@ -62,7 +67,9 @@ watch(
 
     <article v-else-if="work" class="work">
       <p class="back">
-        <RouterLink to="/">← 返回首页</RouterLink>
+        <RouterLink :to="backCategory?.path ?? '/'">
+          {{ backCategory ? `← 返回${backCategory.label}` : '← 返回首页' }}
+        </RouterLink>
       </p>
 
       <header class="work-header">

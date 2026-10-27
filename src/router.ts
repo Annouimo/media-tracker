@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { CATEGORIES, DEFAULT_CATEGORY } from '../shared/categories'
 import AdminLibrary from './pages/admin/AdminLibrary.vue'
 import AdminWorkEdit from './pages/admin/AdminWorkEdit.vue'
 import AdminWorkNew from './pages/admin/AdminWorkNew.vue'
@@ -12,9 +13,14 @@ export const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: PublicHome,
+      redirect: DEFAULT_CATEGORY.path,
     },
+    ...CATEGORIES.map((category) => ({
+      path: category.path,
+      name: `category-${category.slug}`,
+      component: PublicHome,
+      props: { category: category.slug },
+    })),
     {
       path: '/works/:id',
       name: 'work',

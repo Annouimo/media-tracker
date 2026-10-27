@@ -3,8 +3,8 @@ import { getJson } from './http'
 
 export { ApiError } from './http'
 
-export function getPublicHome(): Promise<PublicHome> {
-  return getJson<PublicHome>('/api/public/home')
+export function getPublicCategory(slug: string): Promise<PublicHome> {
+  return getJson<PublicHome>(`/api/public/categories/${encodeURIComponent(slug)}`)
 }
 
 export function getPublicWork(id: string): Promise<PublicWorkDetail> {

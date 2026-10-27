@@ -3,6 +3,8 @@
 > 基于 `README.md` 第 1–3 节的设计、`migrations/0001_init.sql` 的 schema，以及已经通过 DBX 完成的旧数据导入。
 >
 > 本文件是执行计划，不是新的设计决策；设计冲突时以 `README.md` 为准。
+>
+> 2026-10-27 更新：M7 起公开页按分类切换，公开 API 由 `/api/public/home` 改为 `/api/public/categories/:slug`；下文 M2/M6 中关于 `/api/public/home` 的记录保留为当时状态。
 
 ---
 

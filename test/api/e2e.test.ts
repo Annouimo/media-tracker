@@ -39,10 +39,10 @@ describe('critical public/admin flow', () => {
     expect(created.work.state.status).toBe('done')
     expect(created.log).not.toBeNull()
 
-    const homeResponse = await SELF.fetch(`${PUBLIC_BASE}/home`)
-    expect(homeResponse.status).toBe(200)
-    const home = (await homeResponse.json()) as PublicHome
-    expect(home.reviews.some((work) => work.id === workId)).toBe(true)
+    const booksResponse = await SELF.fetch(`${PUBLIC_BASE}/categories/book`)
+    expect(booksResponse.status).toBe(200)
+    const books = (await booksResponse.json()) as PublicHome
+    expect(books.reviews.some((work) => work.id === workId)).toBe(true)
 
     const detailResponse = await SELF.fetch(`${PUBLIC_BASE}/works/${workId}`)
     expect(detailResponse.status).toBe(200)
@@ -60,7 +60,34 @@ describe('critical public/admin flow', () => {
     const afterUndo = await SELF.fetch(`${PUBLIC_BASE}/works/${workId}`)
     expect(afterUndo.status).toBe(404)
 
-    const homeAfterUndo = (await (await SELF.fetch(`${PUBLIC_BASE}/home`)).json()) as PublicHome
-    expect(homeAfterUndo.reviews.some((work) => work.id === workId)).toBe(false)
+    const booksAfterUndo = (await (
+      await SELF.fetch(`${PUBLIC_BASE}/categories/book`)
+    ).json()) as PublicHome
+    expect(booksAfterUndo.reviews.some((work) => work.id === workId)).toBe(false)
+  })
+
+  it('keeps a new textbook out of the book category', async () => {
+    const createResponse = await adminPost('/works', {
+      title: 'E2E Textbook',
+      creator: 'E2E Author',
+      type: 'Textbook',
+      status: 'done',
+      total_progress: 10,
+      progress: 10,
+    })
+    expect(createResponse.status).toBe(201)
+
+    const created = (await createResponse.json()) as AdminMutationResult
+    const workId = created.work.id
+
+    const textbooks = (await (
+      await SELF.fetch(`${PUBLIC_BASE}/categories/textbook`)
+    ).json()) as PublicHome
+    expect(textbooks.archive.some((work) => work.id === workId)).toBe(true)
+
+    const books = (await (
+      await SELF.fetch(`${PUBLIC_BASE}/categories/book`)
+    ).json()) as PublicHome
+    expect(books.archive.some((work) => work.id === workId)).toBe(false)
   })
 })
