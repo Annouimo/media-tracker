@@ -3,7 +3,7 @@
 一个单用户的阅读档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人书架**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M1–M6 已完成并部署到生产（`media-tracker.annouimo.com`）；M7 分类导航在 `dev` 分支
+- 当前状态：M1–M7 已完成并部署到生产（`media-tracker.annouimo.com`）
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -731,3 +731,13 @@ DEV_AUTH_BYPASS=1
 - `/admin`、`/admin/api/state` → 302 到 Cloudflare Access
 - API 响应包含 HSTS / CSP / Referrer-Policy / X-Content-Type-Options / X-Frame-Options
 - D1 备份：`archive/backup/media-tracker-2026-10-27.sql`（gitignored）
+
+### 2026-10-27 — M7 分类导航
+
+- release merge：`6098c8c`（`dev` → `main`）
+- 顶部导航改为分类切换：`/books` 图书、`/textbooks` 教材；`/` 重定向到第一个分类
+- 公开 API：`GET /api/public/categories/:slug` 取代 `/api/public/home`；未注册分类 404
+- 分类在 `shared/categories.ts` 注册；详情页返回链接跟随作品分类
+- CI 通过（typecheck / typecheck:test / test / build，69 个测试）
+- Workers Builds：success（2026-10-27 15:22 +08，Version ID `8f8f71cf`）
+- 线上验证：`/textbooks` 渲染「教材 · 我的阅藏」与 4 本教材；`/api/public/categories/book` 返回图书的在读/短评/读过，`/api/public/categories/textbook` 返回 4 本教材
