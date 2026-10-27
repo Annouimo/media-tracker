@@ -3,7 +3,7 @@
 一个单用户的阅读档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人书架**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M3 代码已完成（公开 API/页面、Access 校验、`/admin` 书架）；Cloudflare Access 控制台/AUD 待配置；写入流程尚未接入
+- 当前状态：M3 已完成（公开 API/页面、Cloudflare Access、`/admin` 书架）；写入流程尚未接入
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -626,6 +626,7 @@ Path:   /admin*
 
 `/admin*` 同时保护后台页面和 `/admin/api/*`，只需要一个 AUD。
 
+<<<<<<< HEAD
 在 Worker 配置中添加（不是 secrets；建议写进 `wrangler.jsonc` 的 `vars`，preview 用 `previews.vars`，避免部署时被覆盖）：
 
 ```text
@@ -634,6 +635,18 @@ ACCESS_AUD=<Access application AUD>
 ```
 
 `dev.media-tracker.annouimo.com` 的 preview 是独立的 Access 应用（同样 path `/admin*`），需要把它的 AUD 配到 preview 环境变量；不要和 production AUD 混用。
+=======
+当前配置已写入 `wrangler.jsonc` 的 `vars` 和 `previews.vars`：
+
+```text
+ACCESS_TEAM_DOMAIN=https://annouimo.cloudflareaccess.com
+ACCESS_AUD=25eda77e...a417a5
+```
+
+Access 边缘已验证：`/admin` 和 `/admin/api/state` 都会 302 到 `annouimo.cloudflareaccess.com` 登录页，JWKS 返回 2 个 key。
+
+当前 production 与 preview 使用同一个 Zero Trust 策略/AUD；配置已写入 `wrangler.jsonc` 的 `vars` 和 `previews.vars`。
+>>>>>>> 704876a (feat: add Access-protected admin library)
 
 本地 Access bypass：
 

@@ -364,7 +364,9 @@ src/lib/admin-api.ts
 - `test/api/admin.test.ts`：localhost bypass 200、非 localhost 无 JWT 401、公开 API 不受影响
 - `bun run test`：36 passed
 - 本地完整数据验证：`/admin/api/state` 返回 283 works / 372 logs
-- Cloudflare Access 控制台应用尚未配置；需要 team domain + AUD 后才能在生产/预览验证后台
+- Cloudflare Access 已配置：team domain `annouimo.cloudflareaccess.com`，AUD 写入 `vars` / `previews.vars`
+- Access 边缘已验证：`/admin`、`/admin/api/state` 302 到 Access 登录；JWKS 2 keys；公开 API 仍 200
+- 待 push `dev` 后验证 Worker JWT 校验与书架页面
 
 ---
 

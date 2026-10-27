@@ -5,6 +5,10 @@
   "main": "./worker/index.ts",
   "upload_source_maps": true,
   "workers_dev": false,
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "https://annouimo.cloudflareaccess.com",
+    "ACCESS_AUD": "25eda77e3454c4add9aac197b4824abd2cdd30ef04ce022aa0506287d2a417a5"
+  },
   "assets": {
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*", "/admin/api/*"]
@@ -20,6 +24,10 @@
     }
   ],
   "previews": {
+    "vars": {
+      "ACCESS_TEAM_DOMAIN": "https://annouimo.cloudflareaccess.com",
+      "ACCESS_AUD": "25eda77e3454c4add9aac197b4824abd2cdd30ef04ce022aa0506287d2a417a5"
+    },
     "d1_databases": [
       {
         "binding": "MEDIA_TRACKER_DB",
@@ -41,10 +49,9 @@
   // gives the branch preview its D1 binding. It currently points at the same
   // database; create a separate preview D1 before write features touch data.
   //
-  // Cloudflare Access:
-  //   ACCESS_TEAM_DOMAIN = https://<team>.cloudflareaccess.com
-  //   ACCESS_AUD         = <Access application AUD>
-  // Set these as Worker vars (not secrets). If missing, /admin/api fails
-  // closed with access_not_configured. Localhost can use DEV_AUTH_BYPASS=1
-  // in .dev.vars; it is ignored for non-local hosts.
+  // Cloudflare Access is configured in `vars` above and in `previews.vars`.
+  // The same Access policy/AUD covers production and preview in this project.
+  // Localhost can use DEV_AUTH_BYPASS=1 in .dev.vars; it is ignored for
+  // non-local hosts. Missing Access config fails closed with
+  // access_not_configured.
 }
