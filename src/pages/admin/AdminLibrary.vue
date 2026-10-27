@@ -192,6 +192,7 @@ onMounted(async () => {
             <th>添加</th>
             <th>读完</th>
             <th>短评</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -209,6 +210,11 @@ onMounted(async () => {
             <td class="num">{{ day(work.added_at) }}</td>
             <td class="num">{{ work.state.finishedOn ?? '—' }}</td>
             <td>{{ work.short_review ? '有' : '—' }}</td>
+            <td>
+              <RouterLink class="action" :to="`/admin/works/${work.id}/progress`">
+                进度
+              </RouterLink>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -305,6 +311,16 @@ onMounted(async () => {
 .admin-table .num {
   color: var(--secondary);
   font-variant-numeric: tabular-nums;
+}
+
+.admin-table .action {
+  color: var(--secondary);
+}
+
+.admin-table .action:hover {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
 }
 
 .empty {

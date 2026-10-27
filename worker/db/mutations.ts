@@ -20,7 +20,7 @@ import {
   resolveTotalProgress,
   statusAfterProgress,
 } from '../domain/state'
-import { getLatestLog, getWorkWithStateOrThrow } from './queries'
+import { getLatestLog, getLogById, getWorkWithStateOrThrow } from './queries'
 
 function newId(): string {
   return crypto.randomUUID()
@@ -197,7 +197,7 @@ export async function setProgress(
 
   let total = work.total_progress
   if (nextStatus === 'reading') {
-    total = resolveTotalProgress(work, input.total_progress, input.confirm_binary)
+    total = resolveTotalProgress(work, input.total_progress, input.confirm_binary ?? false)
   } else if (input.total_progress != null) {
     total = input.total_progress
   }
@@ -245,7 +245,7 @@ export async function setStatus(
 
   let total = work.total_progress
   if (input.status === 'reading') {
-    total = resolveTotalProgress(work, input.total_progress, input.confirm_binary)
+    total = resolveTotalProgress(work, input.total_progress, input.confirm_binary ?? false)
   } else if (input.total_progress != null) {
     total = input.total_progress
   }
@@ -289,7 +289,7 @@ export async function startNewRound(
     throw invalidTransition(current.status, 'reading')
   }
 
-  const total = resolveTotalProgress(work, input.total_progress, input.confirm_binary)
+  const total = resolveTotalProgress(work, input.total_progress, input.confirm_binary ?? false)
   const logged = resolveLoggedAt(input.logged_on, now)
   const latest = await getLatestLog(db, workId)
   const log = buildLog({
@@ -331,6 +331,30 @@ export async function undoLatestLog(
   }
 
   return { work: await getWorkWithStateOrThrow(db, workId), deleted: latest }
+}
+
+export async function undoLog(
+  db: D1Database,
+  logId: string,
+): Promise<{ work: WorkWithState; deleted: Log }> {
+  const log = await getLogById(db, logId)
+  if (!log) throw notFound('Log not found')
+
+  const latest = await getLatestLog(db, log.work_id)
+  if (!latest || latest.id !== log.id) {
+    throw new DomainError('conflict', 'Only the latest log can be undone', 409)
+  }
+
+  const result = await db
+    .prepare('DELETE FROM logs WHERE id = ? AND work_id = ? AND seq = ?')
+    .bind(log.id, log.work_id, log.seq)
+    .run()
+
+  if (result.meta.changes === 0) {
+    throw new DomainError('conflict', 'The latest log changed; refresh and try again', 409)
+  }
+
+  return { work: await getWorkWithStateOrThrow(db, log.work_id), deleted: log }
 }
 
 export async function updateWork(

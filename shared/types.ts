@@ -96,6 +96,21 @@ export type AdminState = {
   logs: Log[]
 }
 
+export type AdminWorkDetail = {
+  work: WorkWithState
+  logs: Log[]
+}
+
+export type AdminMutationResult = {
+  work: WorkWithState
+  log: Log | null
+}
+
+export type AdminUndoResult = {
+  work: WorkWithState
+  deleted: Log
+}
+
 export type ApiErrorBody = {
   error: string
   message: string

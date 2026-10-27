@@ -404,6 +404,22 @@ src/lib/admin-api.ts
 
 **M4 验收**：状态机覆盖全部转换；二元 409 流程可走通；撤销后当前状态回到上一条快照；点最后一格不会自动 done。
 
+### 6.3 M4 完成记录（dev）
+
+- `POST /admin/api/works/:id/progress` / `status` / `rounds`
+- `DELETE /admin/api/logs/:id`（校验必须是最新 log）
+- `GET /admin/api/works/:id`：后台进度页数据
+- `DomainError` 统一映射为 409/404/422 JSON
+- `src/pages/admin/AdminWorkProgress.vue`
+  - 章节格子，最后一格不自动 done
+  - 状态按钮不提供回到 wish
+  - 二元作品进入 reading 时弹章节数/保持二元
+  - 历史倒序，仅最新可撤销
+- 书架增加“进度”入口
+- `test/api/admin.test.ts`：14 个 admin API 测试
+- `bun run test`：46 passed
+- `bun run typecheck`、`bun run typecheck:test`、`bun run build` 通过
+
 ---
 
 ## 7. M5 — 添加/编辑 JSON

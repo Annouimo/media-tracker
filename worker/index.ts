@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { DomainError } from './domain/errors'
 import { adminRoutes } from './routes/admin'
 import { publicRoutes } from './routes/public'
 import type { AppEnv } from './types'
@@ -45,6 +46,23 @@ app.route('/admin/api', adminRoutes)
 app.all('/api/*', (c) => c.json({ error: 'not_implemented' }, 501))
 
 app.onError((error, c) => {
+  if (error instanceof DomainError) {
+    return new Response(
+      JSON.stringify({
+        error: error.code,
+        message: error.message,
+        details: error.details,
+      }),
+      {
+        status: error.status,
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'cache-control': 'no-store',
+        },
+      },
+    )
+  }
+
   console.error(error)
   return c.json(
     {

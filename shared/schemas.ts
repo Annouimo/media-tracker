@@ -109,6 +109,6 @@ export const workIdSchema = z.string().min(1).max(64)
 
 export type CreateWorkInput = z.infer<typeof createWorkSchema>
 export type UpdateWorkInput = z.infer<typeof updateWorkSchema>
-export type ProgressInput = z.infer<typeof progressInputSchema>
-export type StatusInput = z.infer<typeof statusInputSchema>
-export type RoundInput = z.infer<typeof roundInputSchema>
+export type ProgressInput = z.input<typeof progressInputSchema>
+export type StatusInput = z.input<typeof statusInputSchema>
+export type RoundInput = z.input<typeof roundInputSchema>

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AdminLibrary from './pages/admin/AdminLibrary.vue'
+import AdminWorkProgress from './pages/admin/AdminWorkProgress.vue'
 import NotFound from './pages/NotFound.vue'
 import PublicHome from './pages/PublicHome.vue'
 import PublicWork from './pages/PublicWork.vue'
@@ -21,6 +22,12 @@ export const router = createRouter({
       path: '/admin',
       name: 'admin-library',
       component: AdminLibrary,
+      meta: { wide: true },
+    },
+    {
+      path: '/admin/works/:id/progress',
+      name: 'admin-work-progress',
+      component: AdminWorkProgress,
       meta: { wide: true },
     },
     {
