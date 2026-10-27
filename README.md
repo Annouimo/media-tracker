@@ -3,7 +3,7 @@
 一个单用户的阅读档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人书架**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M1–M7 已完成并部署到生产（`media-tracker.annouimo.com`）；M8 后台精修在 `dev` 分支
+- 当前状态：M1–M8 已完成并部署到生产（`media-tracker.annouimo.com`）
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -768,3 +768,15 @@ DEV_AUTH_BYPASS=1
 - CI 通过（typecheck / typecheck:test / test / build，69 个测试）
 - Workers Builds：success（2026-10-27 15:22 +08，Version ID `8f8f71cf`）
 - 线上验证：`/textbooks` 渲染「教材 · 我的阅藏」与 4 本教材；`/api/public/categories/book` 返回图书的在读/短评/读过，`/api/public/categories/textbook` 返回 4 本教材
+
+### 2026-10-27 — M8 后台首页与精修
+
+- release merge：`875d09a`（`dev` → `main`）
+- 后台首页 `/admin`：在读作品的章节格子聚合、快速记录、补录日期、一键读完
+- 书架移到 `/admin/library`；导航改为 首页 / 书架 / 添加作品，返回链接与面包屑同步
+- 表单化新建/编辑（保留 JSON 模式）、进度页日期/弹窗/行内撤销、toast、相对日期、分类中文标签
+- 书架手机端卡片视图、桌面端 sticky 表头；新增 `GET /admin/api/works` 精简查重接口
+- 修复 `--background` 未定义造成的黑底黑字（主按钮、已读格子、撤销确认、添加作品按钮等）
+- CI 通过（typecheck / typecheck:test / test / build，72 个测试）
+- Workers Builds：success（2026-10-27 16:35 +08，Version ID `50f8aaa8`）
+- 线上验证：`/api/health` 200，`/api/public/categories/book` 200；生产 CSS 含 `--background`，`AdminDashboard` chunk 已上线
