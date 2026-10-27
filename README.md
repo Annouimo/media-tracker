@@ -3,7 +3,7 @@
 一个单用户的阅读档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人书架**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：项目骨架已初始化；D1、Access、业务页面尚未接入
+- 当前状态：M1 已完成（共享类型、状态机、D1 查询层、领域/DB 测试）；公开 API/UI 尚未接入
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -540,7 +540,11 @@ bun run build       # 类型检查 + vite build（无域名/D1 环境变量依�
 bun run preview     # build 后预览
 bun run deploy      # 本地手动 build + wrangler deploy（备用）
 bun run deploy:ci   # Workers Builds 的 deploy command
+bun run test        # Vitest + Workers pool（用测试用 D1 fixture）
+bun run typecheck:test
 ```
+
+M1 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（5 本 / 8 条 log），不接触生产数据。当前 27 个测试全部通过。
 
 ### 5.4 D1
 

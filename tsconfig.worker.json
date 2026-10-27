@@ -13,5 +13,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["worker/**/*.ts"]
+  "include": ["worker/**/*.ts", "shared/**/*.ts"]
 }

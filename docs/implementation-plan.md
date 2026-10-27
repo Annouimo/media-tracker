@@ -232,6 +232,17 @@ shared/
 
 **M1 验收**：不写页面，仅用测试/脚本证明领域逻辑与导入数据一致。
 
+### 3.5 M1 完成记录（dev）
+
+- `shared/types.ts` / `constants.ts` / `dates.ts` / `schemas.ts`
+- `worker/domain/state.ts` / `errors.ts` / `dates.ts`
+- `worker/db/queries.ts` / `mutations.ts`
+- `test/domain/*.test.ts`、`test/db/*.test.ts`
+- `test/fixtures/seed.sql`：5 本 / 8 条 log 的脱敏 fixture
+- `bun run test`：27 passed
+- `bun run typecheck`、`bun run typecheck:test`、`bun run build` 通过
+- 当前状态查询在远程全量 D1 上验证：283 行，wish 204 / reading 2 / done 51 / paused 26
+
 ---
 
 ## 4. M2 — 公开 API 与公开页面
