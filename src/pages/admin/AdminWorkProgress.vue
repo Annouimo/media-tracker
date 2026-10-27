@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { categoryForType } from '../../../shared/categories'
-import { STATUS_LABELS } from '../../../shared/constants'
+import { categoryForType, copyForType } from '../../../shared/categories'
 import { todayLocalDay } from '../../../shared/dates'
 import type { AdminWorkDetail, WorkStatus } from '../../../shared/types'
 import {
@@ -12,7 +11,7 @@ import {
   postRound,
   postStatus,
 } from '../../lib/admin-api'
-import { describeLog } from '../../lib/format'
+import { describeLog, progressLabel } from '../../lib/format'
 import { ApiError } from '../../lib/http'
 import ChapterGrid from '../../components/admin/ChapterGrid.vue'
 import AdminBreadcrumb from '../../components/admin/AdminBreadcrumb.vue'
@@ -38,6 +37,7 @@ const logDate = ref(today)
 
 const work = computed(() => detail.value?.work ?? null)
 const logs = computed(() => detail.value?.logs ?? [])
+const copy = computed(() => copyForType(work.value?.type ?? ''))
 const latestLog = computed(() => logs.value.at(-1) ?? null)
 const history = computed(() => [...logs.value].reverse())
 
@@ -57,12 +57,12 @@ const isPublic = computed(
 
 const progressText = computed(() => {
   if (!work.value) return ''
-  if (work.value.total_progress > 1) {
-    return `${work.value.state.progress} / ${work.value.total_progress} 章`
-  }
-  if (work.value.state.status === 'done') return '已读完'
-  if (work.value.state.status === 'reading') return '在读'
-  return '未分章'
+  return progressLabel(
+    work.value.state.progress,
+    work.value.total_progress,
+    work.value.state.status,
+    copy.value,
+  )
 })
 
 const loggedOn = computed(() =>
@@ -71,32 +71,32 @@ const loggedOn = computed(() =>
 
 const statusActions = computed<Array<{ status: StatusAction; label: string; primary?: boolean }>>(
   () => {
-    const doneLabel = isBinary.value ? '标记读完' : '读完'
+    const doneLabel = isBinary.value ? copy.value.markDone : copy.value.doneAction
     switch (status.value) {
       case 'wish':
         return [
-          { status: 'reading', label: '开始阅读', primary: true },
+          { status: 'reading', label: copy.value.startReading, primary: true },
           { status: 'done', label: doneLabel },
-          { status: 'paused', label: '搁置' },
-          { status: 'dropped', label: '弃读' },
+          { status: 'paused', label: copy.value.pause },
+          { status: 'dropped', label: copy.value.drop },
         ]
       case 'reading':
         return [
           { status: 'done', label: doneLabel, primary: true },
-          { status: 'paused', label: '搁置' },
-          { status: 'dropped', label: '弃读' },
+          { status: 'paused', label: copy.value.pause },
+          { status: 'dropped', label: copy.value.drop },
         ]
       case 'paused':
         return [
-          { status: 'reading', label: '继续阅读', primary: true },
+          { status: 'reading', label: copy.value.continueReading, primary: true },
           { status: 'done', label: doneLabel },
-          { status: 'dropped', label: '弃读' },
+          { status: 'dropped', label: copy.value.drop },
         ]
       case 'dropped':
         return [
-          { status: 'reading', label: '继续阅读', primary: true },
+          { status: 'reading', label: copy.value.continueReading, primary: true },
           { status: 'done', label: doneLabel },
-          { status: 'paused', label: '搁置' },
+          { status: 'paused', label: copy.value.pause },
         ]
       case 'done':
         return []
@@ -216,7 +216,7 @@ async function confirmChapters(): Promise<void> {
   const id = work.value?.id
   const chapters = Number(chapterInput.value)
   if (!id || !Number.isInteger(chapters) || chapters < 2) {
-    error.value = '请输入大于等于 2 的章节数。'
+    error.value = copy.value.chapterError
     return
   }
 
@@ -276,7 +276,7 @@ watch(
 
     <p v-else-if="notFound" class="empty">
       没有找到这个作品。
-      <RouterLink to="/admin/library">返回书架</RouterLink>
+      <RouterLink to="/admin/library">返回作品库</RouterLink>
     </p>
 
     <p v-else-if="error && !work" class="empty" role="alert">{{ error }}</p>
@@ -285,7 +285,7 @@ watch(
       <div class="crumb-row">
         <AdminBreadcrumb
           :items="[
-            { label: '书架', to: '/admin/library' },
+            { label: '作品库', to: '/admin/library' },
             { label: work.title, to: `/admin/works/${work.id}/progress` },
             { label: '进度' },
           ]"
@@ -307,7 +307,7 @@ watch(
 
       <div class="action-bar">
         <div class="action-state">
-          <strong>{{ STATUS_LABELS[status] }}</strong>
+          <strong>{{ copy.status[status] }}</strong>
           <span>{{ progressText }}</span>
         </div>
         <div class="actions">
@@ -340,7 +340,7 @@ watch(
 
       <p class="hint">
         默认按今天记录；改成过去的日期可以补录，补录只保留日期。
-        <template v-if="isBinary">未分章作品；“标记读完”需要手动点击。</template>
+        <template v-if="isBinary">{{ copy.binaryHint }}；“{{ copy.markDone }}”需要手动点击。</template>
       </p>
 
       <p v-if="error" class="error" role="alert">{{ error }}</p>
@@ -348,16 +348,17 @@ watch(
       <section v-if="!isBinary" class="section">
         <div class="section-head">
           <h2>进度</h2>
-          <span>{{ progress }} / {{ total }}</span>
+          <span>{{ progressText }}</span>
         </div>
         <ChapterGrid
           :total="total"
           :progress="progress"
           :disabled="saving || status === 'done'"
-          :label="`${work.title} 的章节进度`"
+          :copy="copy"
+          :label="`${work.title} 的${copy.chapterLabel}`"
           @select="setCell"
         />
-        <p class="hint">点章节只记录进度；最后一章不会自动标记读完。</p>
+        <p class="hint">{{ copy.progressHint }}</p>
       </section>
 
       <dialog
@@ -366,9 +367,9 @@ watch(
         class="prompt"
         @close="showChapterPrompt = false"
       >
-        <h2>设置章节数</h2>
+        <h2>{{ copy.chapterTitle }}</h2>
         <p class="hint">
-          这本书还没有章节数。可以输入章节数，或显式保持未分章。
+          {{ copy.chapterHint }}
         </p>
         <input
           ref="chapterInputEl"
@@ -378,17 +379,17 @@ watch(
           min="2"
           step="1"
           inputmode="numeric"
-          placeholder="章节数"
-          aria-label="章节数"
+          :placeholder="copy.chapterInput"
+          :aria-label="copy.chapterInput"
           :disabled="saving"
         />
         <p v-if="error" class="error" role="alert">{{ error }}</p>
         <div class="prompt-actions">
           <button class="btn primary" type="button" :disabled="saving" @click="confirmChapters">
-            使用章节数
+            {{ copy.useChapters }}
           </button>
           <button class="btn" type="button" :disabled="saving" @click="keepBinary">
-            保持未分章
+            {{ copy.keepBinary }}
           </button>
           <button class="btn" type="button" :disabled="saving" @click="closePrompt">
             取消
@@ -410,7 +411,7 @@ watch(
           >
             <div class="history-main">
               <span class="history-date">{{ log.logged_on }}</span>
-              <span>{{ describeLog(log) }}</span>
+              <span>{{ describeLog(log, copy) }}</span>
               <span v-if="log.round > 1" class="history-round">第 {{ log.round }} 次</span>
               <span v-if="log.id === latestLog?.id" class="latest-label">最新</span>
             </div>

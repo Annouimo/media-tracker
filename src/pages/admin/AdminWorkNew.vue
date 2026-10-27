@@ -47,7 +47,7 @@ async function save(payload: CreateWorkInput): Promise<void> {
   <div class="editor-page">
     <div class="crumb-row">
       <AdminBreadcrumb
-        :items="[{ label: '书架', to: '/admin/library' }, { label: '添加作品' }]"
+        :items="[{ label: '作品库', to: '/admin/library' }, { label: '添加作品' }]"
       />
     </div>
 

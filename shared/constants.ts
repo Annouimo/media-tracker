@@ -2,6 +2,7 @@ import type { WorkStatus } from './types'
 
 export const APP_TIME_ZONE = 'Asia/Shanghai'
 
+/** Default book labels. UI code should use copyForType(type).status instead. */
 export const STATUS_LABELS: Record<WorkStatus, string> = {
   wish: '想读',
   reading: '在读',

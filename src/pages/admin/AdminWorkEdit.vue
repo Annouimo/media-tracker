@@ -2,11 +2,12 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import type { UpdateWorkInput } from '../../../shared/schemas'
-import { STATUS_LABELS } from '../../../shared/constants'
+import { copyForType } from '../../../shared/categories'
 import type { AdminWorkDetail, WorkSummary } from '../../../shared/types'
 import WorkForm from '../../components/admin/WorkForm.vue'
 import AdminBreadcrumb from '../../components/admin/AdminBreadcrumb.vue'
 import { getAdminWork, getWorkSummaries, patchWork } from '../../lib/admin-api'
+import { progressLabel } from '../../lib/format'
 import { ApiError } from '../../lib/http'
 import { showToast } from '../../lib/toast'
 
@@ -20,12 +21,16 @@ const error = ref('')
 const saving = ref(false)
 
 const work = computed(() => detail.value?.work ?? null)
+const copy = computed(() => copyForType(work.value?.type ?? ''))
 const status = computed(() => work.value?.state.status ?? 'wish')
 const progressText = computed(() => {
   if (!work.value) return ''
-  return work.value.total_progress > 1
-    ? `${work.value.state.progress} / ${work.value.total_progress} 章`
-    : STATUS_LABELS[work.value.state.status]
+  return progressLabel(
+    work.value.state.progress,
+    work.value.total_progress,
+    work.value.state.status,
+    copy.value,
+  )
 })
 
 const initial = computed<UpdateWorkInput | null>(() => {
@@ -109,7 +114,7 @@ watch(
 
     <p v-else-if="notFound" class="empty">
       没有找到这个作品。
-      <RouterLink to="/admin/library">返回书架</RouterLink>
+      <RouterLink to="/admin/library">返回作品库</RouterLink>
     </p>
 
     <p v-else-if="error && !work" class="empty" role="alert">{{ error }}</p>
@@ -118,7 +123,7 @@ watch(
       <div class="crumb-row">
         <AdminBreadcrumb
           :items="[
-            { label: '书架', to: '/admin/library' },
+            { label: '作品库', to: '/admin/library' },
             { label: work.title, to: `/admin/works/${work.id}/progress` },
             { label: '编辑' },
           ]"
@@ -131,7 +136,7 @@ watch(
       </header>
 
       <div class="readonly">
-        <p>当前状态：{{ STATUS_LABELS[status] }} · {{ progressText }}</p>
+        <p>当前状态：{{ copy.status[status] }} · {{ progressText }}</p>
         <p>
           状态和进度只读；
           <RouterLink :to="`/admin/works/${work.id}/progress`">去进度页修改</RouterLink>。

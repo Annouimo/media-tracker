@@ -1,32 +1,55 @@
-import { STATUS_LABELS } from '../../shared/constants'
+import type { CategoryCopy } from '../../shared/category-copy'
 import { todayLocalDay } from '../../shared/dates'
-import type { PublicLog, PublicWork } from '../../shared/types'
+import type { PublicLog, PublicWork, WorkStatus } from '../../shared/types'
 import type { ZodError } from 'zod'
 
-export function statusLabel(status: PublicWork['status']): string {
-  return STATUS_LABELS[status]
+export function statusLabel(status: PublicWork['status'], copy: CategoryCopy): string {
+  return copy.status[status]
 }
 
-export function progressSummary(work: PublicWork): string {
-  if (work.total_progress > 1) {
-    return `${work.progress} / ${work.total_progress} 章`
+/** Progress for one work, using the category's unit and done-without-progress wording. */
+export function progressLabel(
+  progress: number,
+  total: number,
+  status: WorkStatus,
+  copy: CategoryCopy,
+): string {
+  if (status === 'done' && total > 1 && progress === 0) {
+    return copy.doneUnknownProgress
   }
-  if (work.is_read) return '已读完'
-  if (work.is_reading) return '在读'
-  return '未分章'
+  if (total > 1) {
+    return `${progress} / ${total} ${copy.progressUnit}`
+  }
+  if (status === 'done') return copy.doneSummary
+  if (status === 'reading') return copy.status.reading
+  return copy.binary
 }
 
-export function describeLog(log: PublicLog): string {
-  const label = STATUS_LABELS[log.status]
-  const chapterProgress =
-    log.total_snapshot > 1 ? `${log.progress} / ${log.total_snapshot} 章` : null
+export function progressSummary(work: PublicWork, copy: CategoryCopy): string {
+  if (work.is_read && work.total_progress > 1 && work.progress === 0) {
+    return copy.doneUnknownProgress
+  }
+  if (work.total_progress > 1) {
+    return `${work.progress} / ${work.total_progress} ${copy.progressUnit}`
+  }
+  if (work.is_read) return copy.doneSummary
+  if (work.is_reading) return copy.status.reading
+  return copy.binary
+}
+
+export function describeLog(log: PublicLog, copy: CategoryCopy): string {
+  const label = copy.status[log.status]
+  const progress =
+    log.total_snapshot > 1
+      ? `${log.progress} / ${log.total_snapshot} ${copy.progressUnit}`
+      : null
 
   if (log.event === 'status') return `状态：${label}`
   if (log.event === 'both') {
-    return chapterProgress ? `状态：${label} · 进度：${chapterProgress}` : `状态：${label}`
+    return progress ? `状态：${label} · 进度：${progress}` : `状态：${label}`
   }
-  if (chapterProgress) return `进度：${chapterProgress}`
-  return log.progress >= 1 ? '读完' : '开始阅读'
+  if (progress) return `进度：${progress}`
+  return log.progress >= 1 ? copy.doneAction : copy.startReading
 }
 
 export function formatZodIssues(error: ZodError): string[] {

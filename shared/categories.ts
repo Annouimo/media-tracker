@@ -1,3 +1,6 @@
+import { animeCopy, bookCopy } from './category-copy'
+import type { CategoryCopy } from './category-copy'
+
 export type Category = {
   /** Identifier used by `/api/public/categories/:slug`. */
   slug: string
@@ -7,6 +10,8 @@ export type Category = {
   path: string
   /** Value stored in `works.type`. Not migrated, so legacy casing stays valid. */
   type: string
+  /** Display strings for this category. */
+  copy: CategoryCopy
 }
 
 /**
@@ -17,9 +22,9 @@ export type Category = {
  * read from this list.
  */
 export const CATEGORIES = [
-  { slug: 'book', label: '图书', path: '/books', type: 'Book' },
-  { slug: 'textbook', label: '教材', path: '/textbooks', type: 'Textbook' },
-  { slug: 'anime', label: '动画', path: '/anime', type: 'Anime' },
+  { slug: 'book', label: '图书', path: '/books', type: 'Book', copy: bookCopy },
+  { slug: 'textbook', label: '教材', path: '/textbooks', type: 'Textbook', copy: bookCopy },
+  { slug: 'anime', label: '动画', path: '/anime', type: 'Anime', copy: animeCopy },
 ] as const satisfies readonly Category[]
 
 export type CategorySlug = (typeof CATEGORIES)[number]['slug']
@@ -36,6 +41,11 @@ export function findCategory(slug: string): Category | undefined {
   return CATEGORY_BY_SLUG.get(slug)
 }
 
+/** Copy for a registered category slug; falls back to the book copy. */
+export function copyForCategory(slug: string): CategoryCopy {
+  return findCategory(slug)?.copy ?? bookCopy
+}
+
 function normalizeType(value: string): string {
   return value.trim().toLowerCase()
 }
@@ -44,4 +54,9 @@ function normalizeType(value: string): string {
 export function categoryForType(type: string): Category | undefined {
   const normalized = normalizeType(type)
   return CATEGORIES.find((category) => normalizeType(category.type) === normalized)
+}
+
+/** Copy for a stored works.type value; unknown types fall back to books. */
+export function copyForType(type: string): CategoryCopy {
+  return categoryForType(type)?.copy ?? bookCopy
 }
