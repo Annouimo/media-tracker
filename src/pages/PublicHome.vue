@@ -242,8 +242,8 @@ watch(
 .section-head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: flex-start;
+  gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
