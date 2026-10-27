@@ -485,8 +485,12 @@ WHERE w.deleted_at IS NULL;
 │   ├── main.ts
 │   ├── style.css
 │   └── theme.ts
+├── shared/              # 共享类型、Zod schema、日期工具
 ├── worker/              # Cloudflare Worker / API
-│   └── index.ts
+│   ├── index.ts
+│   ├── domain/          # 状态机、日期、领域错误
+│   └── db/              # D1 查询与写入
+├── test/                # 领域/DB 测试 + 脱敏 fixture
 ├── public/              # 静态资源、_headers、favicon
 ├── migrations/          # D1 migrations
 │   └── 0001_init.sql
