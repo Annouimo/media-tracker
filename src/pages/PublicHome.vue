@@ -208,12 +208,13 @@ watch(
   background: none;
   border: 0;
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 0.2rem;
+  text-decoration: none;
 }
 
 .text-button:hover {
   color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
 }
 
 .reading-block {
