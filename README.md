@@ -3,7 +3,7 @@
 一个单用户的阅读档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人书架**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M6 代码/测试/备份完成；生产部署与最终 E2E 待执行（`media-tracker.annouimo.com` 目前仍是旧 M0 Worker）
+- 当前状态：M1–M6 已完成并部署到生产（`media-tracker.annouimo.com`）
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -562,12 +562,12 @@ M1–M6 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（5 本 / 8 
 
 ### 5.4 D1
 
-远程 D1 已通过 DBX 导入并完成只读校验。2026-10-27 备份时：
+远程 D1 已通过 DBX 导入并完成只读校验。2026-10-27 备份/发布时：
 
 ```text
 284 works / 372 logs（含 M5 预览测试新增的“测试书”1 本）
 wish 205 / reading 2 / done 51 / paused 26 / dropped 0
-公开曾经读完 51 / 当前在读 2
+公开 API 首页：reading 2 / reviews 1 / archive 50
 ```
 
 原始导入基线是 283 works / 372 logs。
@@ -708,3 +708,18 @@ DEV_AUTH_BYPASS=1
 - 旧 URL 不迁移；旧 id 保留在数据库里，但新路由使用新的路径。
 - 状态是 log 快照，`works` 不保存 `status`。
 - 公开详情页已确认采用“摘要 + 可折叠完整记录”；完整记录公开，允许暴露搁置/弃读。
+
+
+---
+
+## 7. 发布记录
+
+### 2026-10-27 — M1–M6
+
+- release merge：`9479db6`
+- 生产：`https://media-tracker.annouimo.com`
+- `/api/health` → 200
+- `/api/public/home` → 200（reading 2 / reviews 1 / archive 50）
+- `/admin`、`/admin/api/state` → 302 到 Cloudflare Access
+- API 响应包含 HSTS / CSP / Referrer-Policy / X-Content-Type-Options / X-Frame-Options
+- D1 备份：`archive/backup/media-tracker-2026-10-27.sql`（gitignored）

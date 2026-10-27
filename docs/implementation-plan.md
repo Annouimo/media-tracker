@@ -515,7 +515,8 @@ src/components/WorkPreview.vue
 - 2026-10-27 D1 备份：`archive/backup/media-tracker-2026-10-27.sql`（gitignored，284 works / 372 logs）
 - 官方 export 因只读 token 被拒，备份由只读 `/query` 生成；生产前应再用写权限 token 做一次官方 export
 - Access 边缘已验证；push `dev` 后需再验证 preview 的 Worker JWT 与 E2E
-- 2026-10-27 检查：生产 `media-tracker.annouimo.com` 仍是旧 M0 Worker（`/api/public/home` 返回 501）；生产部署、最终 E2E 待 dev 合并/部署后验证
+- 2026-10-27 release merge：`9479db6`，生产已部署
+- 生产验证：`/api/health` 200；`/api/public/home` 200（reading 2 / reviews 1 / archive 50）；`/admin` 与 `/admin/api/state` 302 到 Access；API 安全头存在
 
 ---
 
