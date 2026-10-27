@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { categoryForType } from '../../../shared/categories'
 import { STATUS_LABELS, STATUS_ORDER } from '../../../shared/constants'
 import { localDayFromEpoch } from '../../../shared/dates'
 import type { AdminState, WorkWithState } from '../../../shared/types'
@@ -27,6 +28,29 @@ const yearOptions = computed(() =>
   [...new Set(works.value.map((work) => work.release_year).filter((year): year is number => year !== null))]
     .sort((a, b) => b - a),
 )
+
+const hasFilters = computed(
+  () =>
+    query.value.trim() !== '' ||
+    statusFilter.value !== 'all' ||
+    typeFilter.value !== 'all' ||
+    chapterFilter.value !== 'all' ||
+    yearFilter.value !== 'all' ||
+    reviewFilter.value !== 'all',
+)
+
+function clearFilters(): void {
+  query.value = ''
+  statusFilter.value = 'all'
+  typeFilter.value = 'all'
+  chapterFilter.value = 'all'
+  yearFilter.value = 'all'
+  reviewFilter.value = 'all'
+}
+
+function typeLabel(type: string): string {
+  return categoryForType(type)?.label ?? type
+}
 
 const filtered = computed(() => {
   const normalized = query.value.trim().toLowerCase()
@@ -135,10 +159,12 @@ onMounted(async () => {
       </label>
 
       <label>
-        <span class="sr-only">类型</span>
+        <span class="sr-only">分类</span>
         <select v-model="typeFilter">
-          <option value="all">全部类型</option>
-          <option v-for="type in typeOptions" :key="type" :value="type">{{ type }}</option>
+          <option value="all">全部分类</option>
+          <option v-for="type in typeOptions" :key="type" :value="type">
+            {{ typeLabel(type) }}
+          </option>
         </select>
       </label>
 
@@ -177,6 +203,10 @@ onMounted(async () => {
           <option value="finished">读完时间</option>
         </select>
       </label>
+
+      <button v-if="hasFilters" class="clear-filters" type="button" @click="clearFilters">
+        清除筛选
+      </button>
     </div>
 
     <p v-if="loading" class="empty">正在加载…</p>
@@ -188,6 +218,7 @@ onMounted(async () => {
         <thead>
           <tr>
             <th>作品</th>
+            <th>分类</th>
             <th>作者</th>
             <th>状态</th>
             <th>进度</th>
@@ -206,6 +237,7 @@ onMounted(async () => {
               </RouterLink>
               <span v-else>{{ work.title }}</span>
             </td>
+            <td class="category">{{ typeLabel(work.type) }}</td>
             <td>{{ work.creator || '—' }}</td>
             <td>{{ STATUS_LABELS[work.state.status] }}</td>
             <td class="num">{{ progressText(work) }}</td>
@@ -293,6 +325,22 @@ onMounted(async () => {
   border-color: var(--primary);
 }
 
+.clear-filters {
+  align-self: center;
+  padding: 0 0.2rem;
+  font-size: 13px;
+  color: var(--secondary);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.clear-filters:hover {
+  color: var(--primary);
+}
+
 .table-wrap {
   overflow-x: auto;
   border-top: 1px solid var(--border);
@@ -334,6 +382,10 @@ onMounted(async () => {
   font-variant-numeric: tabular-nums;
 }
 
+.admin-table td.category {
+  color: var(--secondary);
+}
+
 .admin-table .action {
   color: var(--secondary);
 }
@@ -351,6 +403,20 @@ onMounted(async () => {
 .empty {
   padding: 2rem 0;
   color: var(--secondary);
+}
+
+@media (max-width: 900px) {
+  /* Keep the table usable on small screens by dropping secondary columns. */
+  .admin-table th:nth-child(3),
+  .admin-table td:nth-child(3),
+  .admin-table th:nth-child(7),
+  .admin-table td:nth-child(7),
+  .admin-table th:nth-child(8),
+  .admin-table td:nth-child(8),
+  .admin-table th:nth-child(9),
+  .admin-table td:nth-child(9) {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {

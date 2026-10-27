@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { STATUS_LABELS } from '../../../shared/constants'
+import { todayLocalDay } from '../../../shared/dates'
 import type { AdminWorkDetail, WorkStatus } from '../../../shared/types'
 import {
   deleteLog,
@@ -26,6 +27,11 @@ const error = ref('')
 const showChapterPrompt = ref(false)
 const chapterInput = ref('')
 const promptMode = ref<PromptMode>('status')
+const dialogEl = ref<HTMLDialogElement | null>(null)
+const chapterInputEl = ref<HTMLInputElement | null>(null)
+const undoingId = ref<string | null>(null)
+const today = todayLocalDay()
+const logDate = ref(today)
 
 const work = computed(() => detail.value?.work ?? null)
 const logs = computed(() => detail.value?.logs ?? [])
@@ -55,6 +61,10 @@ const progressText = computed(() => {
   if (work.value.state.status === 'reading') return '在读'
   return '未分章'
 })
+
+const loggedOn = computed(() =>
+  logDate.value !== '' && logDate.value !== today ? logDate.value : undefined,
+)
 
 const statusActions = computed<Array<{ status: StatusAction; label: string; primary?: boolean }>>(
   () => {
@@ -128,6 +138,7 @@ async function refresh(): Promise<void> {
   const id = work.value?.id
   if (!id) return
   detail.value = await getAdminWork(id)
+  undoingId.value = null
 }
 
 async function run(action: () => Promise<unknown>): Promise<boolean> {
@@ -149,7 +160,7 @@ async function run(action: () => Promise<unknown>): Promise<boolean> {
 
 async function setCell(cell: number): Promise<void> {
   if (!work.value || saving.value || status.value === 'done' || cell === progress.value) return
-  await run(() => postProgress(work.value!.id, { progress: cell }))
+  await run(() => postProgress(work.value!.id, { progress: cell, logged_on: loggedOn.value }))
 }
 
 function openChapterPrompt(mode: PromptMode): void {
@@ -157,6 +168,17 @@ function openChapterPrompt(mode: PromptMode): void {
   chapterInput.value = ''
   error.value = ''
   showChapterPrompt.value = true
+  void nextTick(() => {
+    const dialog = dialogEl.value
+    if (dialog && !dialog.open) dialog.showModal()
+    chapterInputEl.value?.focus()
+  })
+}
+
+function closePrompt(): void {
+  const dialog = dialogEl.value
+  if (dialog?.open) dialog.close()
+  showChapterPrompt.value = false
 }
 
 async function changeStatus(next: StatusAction): Promise<void> {
@@ -173,7 +195,9 @@ async function changeStatus(next: StatusAction): Promise<void> {
     }
   }
 
-  await run(() => postStatus(work.value!.id, { status: next }))
+  await run(() =>
+    postStatus(work.value!.id, { status: next, logged_on: loggedOn.value }),
+  )
 }
 
 async function beginRound(): Promise<void> {
@@ -182,7 +206,7 @@ async function beginRound(): Promise<void> {
     openChapterPrompt('round')
     return
   }
-  await run(() => postRound(work.value!.id, {}))
+  await run(() => postRound(work.value!.id, { logged_on: loggedOn.value }))
 }
 
 async function confirmChapters(): Promise<void> {
@@ -195,10 +219,18 @@ async function confirmChapters(): Promise<void> {
 
   const ok =
     promptMode.value === 'round'
-      ? await run(() => postRound(id, { total_progress: chapters }))
-      : await run(() => postStatus(id, { status: 'reading', total_progress: chapters }))
+      ? await run(() =>
+          postRound(id, { total_progress: chapters, logged_on: loggedOn.value }),
+        )
+      : await run(() =>
+          postStatus(id, {
+            status: 'reading',
+            total_progress: chapters,
+            logged_on: loggedOn.value,
+          }),
+        )
 
-  if (ok) showChapterPrompt.value = false
+  if (ok) closePrompt()
 }
 
 async function keepBinary(): Promise<void> {
@@ -207,15 +239,17 @@ async function keepBinary(): Promise<void> {
 
   const ok =
     promptMode.value === 'round'
-      ? await run(() => postRound(id, { confirm_binary: true }))
-      : await run(() => postStatus(id, { status: 'reading', confirm_binary: true }))
+      ? await run(() => postRound(id, { confirm_binary: true, logged_on: loggedOn.value }))
+      : await run(() =>
+          postStatus(id, { status: 'reading', confirm_binary: true, logged_on: loggedOn.value }),
+        )
 
-  if (ok) showChapterPrompt.value = false
+  if (ok) closePrompt()
 }
 
 async function undo(id: string): Promise<void> {
   if (saving.value) return
-  if (!window.confirm('撤销最新一条记录？')) return
+  undoingId.value = null
   await run(() => deleteLog(id))
 }
 
@@ -261,16 +295,12 @@ watch(
           <span>{{ work.type }}</span>
           <span v-if="latestLog">最近：{{ latestLog.logged_on }}</span>
         </p>
-        <p class="state-line">
-          当前：{{ STATUS_LABELS[status] }} · {{ progressText }}
-        </p>
       </header>
 
-      <p v-if="error" class="error" role="alert">{{ error }}</p>
-
-      <section class="section">
-        <div class="section-head">
-          <h2>状态</h2>
+      <div class="action-bar">
+        <div class="action-state">
+          <strong>{{ STATUS_LABELS[status] }}</strong>
+          <span>{{ progressText }}</span>
         </div>
         <div class="actions">
           <button
@@ -294,8 +324,18 @@ watch(
             开始新一轮
           </button>
         </div>
-        <p v-if="isBinary" class="hint">未分章作品；“标记读完”需要手动点击，不会自动完成。</p>
-      </section>
+        <label class="log-date">
+          <span>记录日期</span>
+          <input v-model="logDate" type="date" :max="today" :disabled="saving" />
+        </label>
+      </div>
+
+      <p class="hint">
+        默认按今天记录；改成过去的日期可以补录，补录只保留日期。
+        <template v-if="isBinary">未分章作品；“标记读完”需要手动点击。</template>
+      </p>
+
+      <p v-if="error" class="error" role="alert">{{ error }}</p>
 
       <section v-if="!isBinary" class="section">
         <div class="section-head">
@@ -323,12 +363,18 @@ watch(
         <p class="hint">点章节只记录进度；最后一章不会自动标记读完。</p>
       </section>
 
-      <section v-if="showChapterPrompt" class="prompt" role="dialog" aria-modal="true">
+      <dialog
+        v-if="showChapterPrompt"
+        ref="dialogEl"
+        class="prompt"
+        @close="showChapterPrompt = false"
+      >
         <h2>设置章节数</h2>
         <p class="hint">
           这本书还没有章节数。可以输入章节数，或显式保持未分章。
         </p>
         <input
+          ref="chapterInputEl"
           v-model="chapterInput"
           class="chapter-input"
           type="number"
@@ -337,7 +383,9 @@ watch(
           inputmode="numeric"
           placeholder="章节数"
           aria-label="章节数"
+          :disabled="saving"
         />
+        <p v-if="error" class="error" role="alert">{{ error }}</p>
         <div class="prompt-actions">
           <button class="btn primary" type="button" :disabled="saving" @click="confirmChapters">
             使用章节数
@@ -345,11 +393,11 @@ watch(
           <button class="btn" type="button" :disabled="saving" @click="keepBinary">
             保持未分章
           </button>
-          <button class="btn" type="button" :disabled="saving" @click="showChapterPrompt = false">
+          <button class="btn" type="button" :disabled="saving" @click="closePrompt">
             取消
           </button>
         </div>
-      </section>
+      </dialog>
 
       <section class="section history">
         <div class="section-head">
@@ -369,15 +417,30 @@ watch(
               <span v-if="log.round > 1" class="history-round">第 {{ log.round }} 次</span>
               <span v-if="log.id === latestLog?.id" class="latest-label">最新</span>
             </div>
-            <button
-              v-if="log.id === latestLog?.id"
-              class="undo"
-              type="button"
-              :disabled="saving"
-              @click="undo(log.id)"
-            >
-              撤销
-            </button>
+            <template v-if="log.id === latestLog?.id">
+              <template v-if="undoingId === log.id">
+                <button
+                  class="undo confirm"
+                  type="button"
+                  :disabled="saving"
+                  @click="undo(log.id)"
+                >
+                  确认撤销
+                </button>
+                <button class="undo" type="button" :disabled="saving" @click="undoingId = null">
+                  取消
+                </button>
+              </template>
+              <button
+                v-else
+                class="undo"
+                type="button"
+                :disabled="saving"
+                @click="undoingId = log.id"
+              >
+                撤销
+              </button>
+            </template>
           </li>
         </ol>
       </section>
@@ -423,10 +486,54 @@ watch(
   content: '·';
 }
 
-.state-line {
-  margin: 0.5rem 0 0;
+.action-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.7rem 0;
+  background: var(--theme);
+  border-bottom: 1px solid var(--border);
+}
+
+.action-state {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
   font-size: 14px;
   color: var(--secondary);
+}
+
+.action-state strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.log-date {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--secondary);
+}
+
+.log-date input {
+  padding: 0.35rem 0.5rem;
+  font-size: 13px;
+  color: var(--primary);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+}
+
+.log-date input:focus {
+  border-color: var(--primary);
 }
 
 .section {
@@ -526,12 +633,18 @@ watch(
 }
 
 .prompt {
+  width: calc(100% - 2rem);
   max-width: 480px;
-  margin-top: 2rem;
-  padding: 1rem;
-  background: var(--code-bg);
+  margin: auto;
+  padding: 1.25rem;
+  color: var(--primary);
+  background: var(--theme);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+}
+
+.prompt::backdrop {
+  background: rgb(0 0 0 / 0.45);
 }
 
 .prompt h2 {
@@ -620,6 +733,12 @@ watch(
   border-color: var(--primary);
 }
 
+.undo.confirm {
+  color: var(--background);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
 .empty {
   padding: 2rem 0;
   color: var(--secondary);
@@ -633,6 +752,12 @@ watch(
 @media (max-width: 768px) {
   .work-header h1 {
     font-size: 32px;
+  }
+
+  .log-date {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
   }
 }
 </style>
