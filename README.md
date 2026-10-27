@@ -3,7 +3,7 @@
 一个单用户的阅读 / 动画档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人作品库**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M1–M9 已完成并部署到生产（`gallery.annouimo.com`）；首页改版和后台作品页合并在 `dev` 分支
+- 当前状态：M1–M10 已部署到生产（`gallery.annouimo.com`）；Cloudflare Access 应用还需把 Domain 更新为 `gallery.annouimo.com`
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -810,3 +810,13 @@ DEV_AUTH_BYPASS=1
 - 生产验证：`/api/public/categories/anime` → 200 / archive 166（20 条 progress=0）；`book` 49、`textbook` 4
 - 详情样例：`/api/public/works/bgm-400602` → 30 条 log、28/28 看完
 - 生产部署：main 自动部署；`/admin` 仍由 Cloudflare Access 保护（302）
+
+### 2026-10-27 — M10 公开页改版、作品页合并与改名
+
+- release merge：`4843a91`（`dev` → `main`）
+- 公开页：可见分类标题 + 计数、在读/短评/读过统一 section、短评与书名同行、读过 row-major 2 列 + 年份、顶栏搜索按钮 + 弹层
+- 后台：`/admin/works/:id` 合并进度/元数据 tab；书架书名进入作品页，操作列只留公开页；`/progress`、`/edit` 重定向
+- 站点名改为「Annouimo 的陈列室」；生产域名 `gallery.annouimo.com`
+- CI 通过（typecheck / 79 个测试 / build）；main 自动部署
+- 生产验证：新品牌已上线；`/api/health` 200；`/api/public/categories/book` 200
+- 注意：Access 应用要把 Domain 更新为 `gallery.annouimo.com`；`/admin` 目前返回 200，`/admin/api/state` 仍 401
