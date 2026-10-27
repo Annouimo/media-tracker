@@ -7,7 +7,9 @@ import ThemeToggle from './ThemeToggle.vue'
 const route = useRoute()
 const email = ref('')
 
-const isNewWork = computed(() => route.path === '/admin/works/new')
+const isHome = computed(() => route.path === '/admin' || route.path === '/admin/')
+const isAdd = computed(() => route.path === '/admin/works/new')
+const isLibrary = computed(() => !isHome.value && !isAdd.value)
 
 const isLocal = computed(() => {
   const host = window.location.hostname
@@ -37,8 +39,9 @@ onMounted(async () => {
       </RouterLink>
 
       <nav class="admin-nav" aria-label="管理导航">
-        <RouterLink to="/admin" :class="{ active: !isNewWork }">书架</RouterLink>
-        <RouterLink to="/admin/works/new" :class="{ active: isNewWork }">添加作品</RouterLink>
+        <RouterLink to="/admin" :class="{ active: isHome }">首页</RouterLink>
+        <RouterLink to="/admin/library" :class="{ active: isLibrary }">书架</RouterLink>
+        <RouterLink to="/admin/works/new" :class="{ active: isAdd }">添加作品</RouterLink>
       </nav>
 
       <div class="admin-account">

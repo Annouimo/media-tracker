@@ -6,6 +6,7 @@ import PublicHome from './pages/PublicHome.vue'
 import PublicWork from './pages/PublicWork.vue'
 
 const AdminLayout = () => import('./layouts/AdminLayout.vue')
+const AdminDashboard = () => import('./pages/admin/AdminDashboard.vue')
 const AdminLibrary = () => import('./pages/admin/AdminLibrary.vue')
 const AdminWorkEdit = () => import('./pages/admin/AdminWorkEdit.vue')
 const AdminWorkNew = () => import('./pages/admin/AdminWorkNew.vue')
@@ -47,6 +48,11 @@ export const router = createRouter({
       children: [
         {
           path: '',
+          name: 'admin-home',
+          component: AdminDashboard,
+        },
+        {
+          path: 'library',
           name: 'admin-library',
           component: AdminLibrary,
         },

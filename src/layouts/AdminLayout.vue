@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import AdminHeader from '../components/AdminHeader.vue'
+import AdminToast from '../components/AdminToast.vue'
 </script>
 
 <template>
@@ -9,6 +10,7 @@ import AdminHeader from '../components/AdminHeader.vue'
     <RouterView />
   </main>
   <footer class="admin-footer">我的阅藏 · 管理</footer>
+  <AdminToast />
 </template>
 
 <style scoped>

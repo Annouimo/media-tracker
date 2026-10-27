@@ -3,20 +3,21 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import type { UpdateWorkInput } from '../../../shared/schemas'
 import { STATUS_LABELS } from '../../../shared/constants'
-import type { AdminState, AdminWorkDetail } from '../../../shared/types'
+import type { AdminWorkDetail, WorkSummary } from '../../../shared/types'
 import WorkForm from '../../components/admin/WorkForm.vue'
-import { getAdminState, getAdminWork, patchWork } from '../../lib/admin-api'
+import AdminBreadcrumb from '../../components/admin/AdminBreadcrumb.vue'
+import { getAdminWork, getWorkSummaries, patchWork } from '../../lib/admin-api'
 import { ApiError } from '../../lib/http'
+import { showToast } from '../../lib/toast'
 
 const route = useRoute()
 const formRef = ref<{ markSaved: () => void } | null>(null)
 const detail = ref<AdminWorkDetail | null>(null)
-const existingWorks = ref<AdminState['works']>([])
+const existingWorks = ref<WorkSummary[]>([])
 const loading = ref(true)
 const notFound = ref(false)
 const error = ref('')
 const saving = ref(false)
-const saved = ref(false)
 
 const work = computed(() => detail.value?.work ?? null)
 const status = computed(() => work.value?.state.status ?? 'wish')
@@ -45,12 +46,11 @@ async function load(id: string): Promise<void> {
   notFound.value = false
   error.value = ''
   detail.value = null
-  saved.value = false
 
   try {
     const [detailData, state] = await Promise.all([
       getAdminWork(id),
-      getAdminState().catch(() => null),
+      getWorkSummaries().catch(() => null),
     ])
     detail.value = detailData
     existingWorks.value = state?.works ?? []
@@ -71,12 +71,11 @@ async function save(payload: UpdateWorkInput): Promise<void> {
 
   saving.value = true
   error.value = ''
-  saved.value = false
   try {
     const result = await patchWork(work.value.id, payload)
     detail.value = { work: result.work, logs: detail.value?.logs ?? [] }
     formRef.value?.markSaved()
-    saved.value = true
+    showToast('已保存')
     document.title = `编辑 ${result.work.title} · 我的阅藏`
   } catch (cause) {
     error.value =
@@ -110,13 +109,21 @@ watch(
 
     <p v-else-if="notFound" class="empty">
       没有找到这个作品。
-      <RouterLink to="/admin">返回书架</RouterLink>
+      <RouterLink to="/admin/library">返回书架</RouterLink>
     </p>
 
     <p v-else-if="error && !work" class="empty" role="alert">{{ error }}</p>
 
     <template v-else-if="work">
-      <p class="back"><RouterLink to="/admin">← 返回书架</RouterLink></p>
+      <div class="crumb-row">
+        <AdminBreadcrumb
+          :items="[
+            { label: '书架', to: '/admin/library' },
+            { label: work.title, to: `/admin/works/${work.id}/progress` },
+            { label: '编辑' },
+          ]"
+        />
+      </div>
 
       <header class="editor-header">
         <h1>编辑作品</h1>
@@ -131,8 +138,6 @@ watch(
         </p>
       </div>
 
-      <p v-if="saved" class="saved" role="status">已保存。</p>
-
       <WorkForm
         ref="formRef"
         mode="edit"
@@ -144,7 +149,6 @@ watch(
         :saving="saving"
         :server-error="error"
         @update="save"
-        @change="saved = false"
       />
     </template>
   </div>
@@ -155,15 +159,8 @@ watch(
   padding-top: 0.5rem;
 }
 
-.back {
+.crumb-row {
   margin: 0 0 1.5rem;
-  font-size: 14px;
-  color: var(--secondary);
-}
-
-.back a:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.25rem;
 }
 
 .editor-header {
@@ -200,12 +197,6 @@ watch(
 .readonly a {
   text-decoration: underline;
   text-underline-offset: 0.2rem;
-}
-
-.saved {
-  margin: 0 0 1rem;
-  font-size: 14px;
-  color: var(--primary);
 }
 
 .empty {

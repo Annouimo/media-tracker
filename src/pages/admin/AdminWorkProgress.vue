@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { categoryForType } from '../../../shared/categories'
 import { STATUS_LABELS } from '../../../shared/constants'
 import { todayLocalDay } from '../../../shared/dates'
 import type { AdminWorkDetail, WorkStatus } from '../../../shared/types'
@@ -13,6 +14,8 @@ import {
 } from '../../lib/admin-api'
 import { describeLog } from '../../lib/format'
 import { ApiError } from '../../lib/http'
+import ChapterGrid from '../../components/admin/ChapterGrid.vue'
+import AdminBreadcrumb from '../../components/admin/AdminBreadcrumb.vue'
 
 type StatusAction = 'reading' | 'done' | 'paused' | 'dropped'
 type PromptMode = 'status' | 'round'
@@ -39,6 +42,10 @@ const latestLog = computed(() => logs.value.at(-1) ?? null)
 const history = computed(() => [...logs.value].reverse())
 
 const status = computed<WorkStatus>(() => work.value?.state.status ?? 'wish')
+const typeLabel = computed(() => {
+  const type = work.value?.type
+  return type ? (categoryForType(type)?.label ?? type) : ''
+})
 const total = computed(() => work.value?.total_progress ?? 1)
 const progress = computed(() => work.value?.state.progress ?? 0)
 const isBinary = computed(() => total.value <= 1)
@@ -46,10 +53,6 @@ const isPublic = computed(
   () =>
     work.value !== null &&
     (work.value.state.finishedOn !== null || work.value.state.status === 'reading'),
-)
-
-const cells = computed(() =>
-  isBinary.value ? [] : Array.from({ length: total.value }, (_, index) => index + 1),
 )
 
 const progressText = computed(() => {
@@ -273,26 +276,31 @@ watch(
 
     <p v-else-if="notFound" class="empty">
       没有找到这个作品。
-      <RouterLink to="/admin">返回书架</RouterLink>
+      <RouterLink to="/admin/library">返回书架</RouterLink>
     </p>
 
     <p v-else-if="error && !work" class="empty" role="alert">{{ error }}</p>
 
     <template v-else-if="work">
-      <p class="back">
-        <RouterLink to="/admin">← 返回书架</RouterLink>
-        <template v-if="isPublic">
-          <span> · </span>
-          <RouterLink :to="`/works/${work.id}`">公开页</RouterLink>
-        </template>
-      </p>
+      <div class="crumb-row">
+        <AdminBreadcrumb
+          :items="[
+            { label: '书架', to: '/admin/library' },
+            { label: work.title, to: `/admin/works/${work.id}/progress` },
+            { label: '进度' },
+          ]"
+        />
+        <RouterLink v-if="isPublic" class="public-link" :to="`/works/${work.id}`">
+          公开页 ↗
+        </RouterLink>
+      </div>
 
       <header class="work-header">
         <h1>{{ work.title }}</h1>
         <p class="meta">
           <span v-if="work.creator">{{ work.creator }}</span>
           <span v-if="work.release_year">{{ work.release_year }}</span>
-          <span>{{ work.type }}</span>
+          <span>{{ typeLabel }}</span>
           <span v-if="latestLog">最近：{{ latestLog.logged_on }}</span>
         </p>
       </header>
@@ -342,24 +350,13 @@ watch(
           <h2>进度</h2>
           <span>{{ progress }} / {{ total }}</span>
         </div>
-        <div class="grid" role="group" aria-label="章节进度">
-          <button
-            v-for="cell in cells"
-            :key="cell"
-            class="cell"
-            :class="{
-              read: cell <= progress,
-              current: cell === progress + 1 && progress < total,
-            }"
-            type="button"
-            :disabled="saving || status === 'done'"
-            :aria-label="`标记读到第 ${cell} 章`"
-            :aria-pressed="cell <= progress"
-            @click="setCell(cell)"
-          >
-            {{ cell }}
-          </button>
-        </div>
+        <ChapterGrid
+          :total="total"
+          :progress="progress"
+          :disabled="saving || status === 'done'"
+          :label="`${work.title} 的章节进度`"
+          @select="setCell"
+        />
         <p class="hint">点章节只记录进度；最后一章不会自动标记读完。</p>
       </section>
 
@@ -453,15 +450,22 @@ watch(
   padding-top: 0.5rem;
 }
 
-.back {
+.crumb-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   margin: 0 0 1.5rem;
-  font-size: 14px;
+}
+
+.public-link {
+  flex: none;
+  font-size: 13px;
   color: var(--secondary);
 }
 
-.back a:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.25rem;
+.public-link:hover {
+  color: var(--primary);
 }
 
 .work-header {
@@ -587,42 +591,9 @@ watch(
   border-color: var(--primary);
 }
 
-.btn:disabled,
-.cell:disabled {
+.btn:disabled {
   cursor: default;
   opacity: 0.6;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(2.25rem, 1fr));
-  gap: 0.35rem;
-}
-
-.cell {
-  aspect-ratio: 1;
-  padding: 0;
-  font-size: 12px;
-  color: var(--secondary);
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.cell:hover:not(:disabled) {
-  border-color: var(--primary);
-}
-
-.cell.read {
-  color: var(--background);
-  background: var(--primary);
-  border-color: var(--primary);
-}
-
-.cell.current {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
 }
 
 .hint {

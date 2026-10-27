@@ -57,6 +57,20 @@ describe('admin API access', () => {
     await expect(response.json()).resolves.toEqual({ email: 'dev@localhost' })
   })
 
+  it('lists work summaries for duplicate checks', async () => {
+    const response = await adminFetch('/works')
+    expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toContain('no-store')
+
+    const body = (await response.json()) as {
+      works: Array<{ id: string; title: string; creator: string; type: string }>
+    }
+    expect(body.works).toHaveLength(6)
+    expect(Object.keys(body.works[0]!).sort()).toEqual(['creator', 'id', 'title', 'type'])
+    expect(body.works[0]).not.toHaveProperty('state')
+    expect(JSON.stringify(body)).not.toContain('logged_on')
+  })
+
   it('does not protect the public API', async () => {
     const response = await SELF.fetch('https://example.com/api/public/categories/book')
     expect(response.status).toBe(200)

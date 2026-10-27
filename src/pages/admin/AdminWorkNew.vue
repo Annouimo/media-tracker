@@ -1,22 +1,23 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import type { CreateWorkInput } from '../../../shared/schemas'
-import type { AdminState } from '../../../shared/types'
+import type { WorkSummary } from '../../../shared/types'
 import WorkForm from '../../components/admin/WorkForm.vue'
-import { getAdminState, postCreate } from '../../lib/admin-api'
+import AdminBreadcrumb from '../../components/admin/AdminBreadcrumb.vue'
+import { getWorkSummaries, postCreate } from '../../lib/admin-api'
 import { ApiError } from '../../lib/http'
 
 const router = useRouter()
 const formRef = ref<{ markSaved: () => void } | null>(null)
-const existingWorks = ref<AdminState['works']>([])
+const existingWorks = ref<WorkSummary[]>([])
 const saving = ref(false)
 const serverError = ref('')
 
 onMounted(async () => {
   document.title = '添加作品 · 我的阅藏'
   try {
-    existingWorks.value = (await getAdminState()).works
+    existingWorks.value = (await getWorkSummaries()).works
   } catch {
     // Duplicate detection is best-effort; saving still works.
   }
@@ -44,7 +45,11 @@ async function save(payload: CreateWorkInput): Promise<void> {
 
 <template>
   <div class="editor-page">
-    <p class="back"><RouterLink to="/admin">← 返回书架</RouterLink></p>
+    <div class="crumb-row">
+      <AdminBreadcrumb
+        :items="[{ label: '书架', to: '/admin/library' }, { label: '添加作品' }]"
+      />
+    </div>
 
     <header class="editor-header">
       <h1>添加作品</h1>
@@ -67,15 +72,8 @@ async function save(payload: CreateWorkInput): Promise<void> {
   padding-top: 0.5rem;
 }
 
-.back {
+.crumb-row {
   margin: 0 0 1.5rem;
-  font-size: 14px;
-  color: var(--secondary);
-}
-
-.back a:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.25rem;
 }
 
 .editor-header {

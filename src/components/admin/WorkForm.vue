@@ -20,7 +20,7 @@ import {
   type CreateWorkInput,
   type UpdateWorkInput,
 } from '../../../shared/schemas'
-import type { WorkStatus, WorkWithState } from '../../../shared/types'
+import type { WorkStatus, WorkSummary } from '../../../shared/types'
 import { WORK_STATUSES } from '../../../shared/types'
 import JsonEditor from '../JsonEditor.vue'
 import WorkPreview from '../WorkPreview.vue'
@@ -32,7 +32,7 @@ const props = withDefaults(
   defineProps<{
     mode: Mode
     initial?: UpdateWorkInput | null
-    existingWorks?: WorkWithState[]
+    existingWorks?: WorkSummary[]
     currentId?: string
     currentStatus?: WorkStatus
     currentProgress?: number
@@ -624,7 +624,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
           <button class="btn primary" type="submit" :disabled="saving">
             {{ saving ? '保存中…' : saveLabel }}
           </button>
-          <RouterLink class="btn" to="/admin">取消</RouterLink>
+          <RouterLink class="btn" to="/admin/library">取消</RouterLink>
         </div>
 
         <p v-if="mode === 'edit'" class="help">

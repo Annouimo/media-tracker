@@ -6,6 +6,7 @@ import { STATUS_LABELS, STATUS_ORDER } from '../../../shared/constants'
 import { localDayFromEpoch } from '../../../shared/dates'
 import type { AdminState, WorkWithState } from '../../../shared/types'
 import { getAdminState } from '../../lib/admin-api'
+import { relativeDay } from '../../lib/format'
 import { ApiError } from '../../lib/http'
 
 const data = ref<AdminState | null>(null)
@@ -231,21 +232,27 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr v-for="work in filtered" :key="work.id">
-            <td class="title">
+            <td class="title" data-label="作品">
               <RouterLink v-if="isPublic(work)" :to="`/works/${work.id}`">
                 {{ work.title }}
               </RouterLink>
               <span v-else>{{ work.title }}</span>
             </td>
-            <td class="category">{{ typeLabel(work.type) }}</td>
-            <td>{{ work.creator || '—' }}</td>
-            <td>{{ STATUS_LABELS[work.state.status] }}</td>
-            <td class="num">{{ progressText(work) }}</td>
-            <td class="num">{{ work.state.loggedOn ?? '—' }}</td>
-            <td class="num">{{ day(work.added_at) }}</td>
-            <td class="num">{{ work.state.finishedOn ?? '—' }}</td>
-            <td>{{ work.short_review ? '有' : '—' }}</td>
-            <td>
+            <td class="category" data-label="分类">{{ typeLabel(work.type) }}</td>
+            <td data-label="作者">{{ work.creator || '—' }}</td>
+            <td data-label="状态">{{ STATUS_LABELS[work.state.status] }}</td>
+            <td class="num" data-label="进度">{{ progressText(work) }}</td>
+            <td
+              class="num"
+              data-label="最近活动"
+              :title="work.state.loggedOn ?? undefined"
+            >
+              {{ work.state.loggedOn ? relativeDay(work.state.loggedOn) : '—' }}
+            </td>
+            <td class="num" data-label="添加">{{ day(work.added_at) }}</td>
+            <td class="num" data-label="读完">{{ work.state.finishedOn ?? '—' }}</td>
+            <td data-label="短评">{{ work.short_review ? '有' : '—' }}</td>
+            <td class="actions" data-label="操作">
               <RouterLink class="action" :to="`/admin/works/${work.id}/progress`">
                 进度
               </RouterLink>
@@ -419,6 +426,20 @@ onMounted(async () => {
   }
 }
 
+@media (min-width: 1000px) {
+  .table-wrap {
+    overflow: visible;
+  }
+
+  .admin-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--theme);
+    box-shadow: inset 0 -1px 0 var(--border);
+  }
+}
+
 @media (max-width: 768px) {
   .admin-header h1 {
     font-size: 32px;
@@ -426,6 +447,65 @@ onMounted(async () => {
 
   .toolbar label.search {
     flex-basis: 100%;
+  }
+
+  .table-wrap {
+    overflow: visible;
+  }
+
+  .admin-table {
+    white-space: normal;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table,
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table tr {
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .admin-table td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.2rem 0;
+    border: 0;
+  }
+
+  .admin-table td::before {
+    flex: none;
+    font-size: 12px;
+    color: var(--secondary);
+    content: attr(data-label);
+  }
+
+  .admin-table td.title {
+    display: block;
+    padding-bottom: 0.45rem;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .admin-table td.title::before,
+  .admin-table td.actions::before {
+    display: none;
+  }
+
+  .admin-table td.actions {
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 0.45rem;
   }
 }
 </style>
