@@ -95,8 +95,11 @@ watch(
         <a :href="work.long_review_url" target="_blank" rel="noopener noreferrer">长评 →</a>
       </p>
 
-      <details v-if="logs.length" class="history">
-        <summary>完整记录（{{ logs.length }}）</summary>
+      <section v-if="logs.length" class="history" aria-labelledby="history-title">
+        <div class="section-head">
+          <h2 id="history-title" class="section-title">完整记录</h2>
+          <span class="section-count">{{ logs.length }}</span>
+        </div>
         <ol class="history-list">
           <li v-for="(log, index) in logs" :key="index" class="history-item">
             <span class="history-date">{{ log.logged_on }}</span>
@@ -106,7 +109,7 @@ watch(
             </span>
           </li>
         </ol>
-      </details>
+      </section>
     </article>
   </div>
 </template>
@@ -176,20 +179,32 @@ watch(
 }
 
 .history {
-  margin-top: 2.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--border);
+  margin-top: 3rem;
 }
 
-.history summary {
-  font-size: 16px;
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 24px;
   font-weight: 600;
-  cursor: pointer;
-  user-select: none;
+  line-height: 1.3;
+}
+
+.section-count {
+  font-size: 13px;
+  color: var(--secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .history-list {
-  margin: 1rem 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -197,11 +212,10 @@ watch(
 .history-item {
   display: flex;
   gap: 1rem;
-  padding: 0.6rem 0;
+  padding: 0.45rem 0;
   font-size: 14px;
   line-height: 1.6;
   color: var(--content);
-  border-bottom: 1px solid var(--border);
 }
 
 .history-date {
