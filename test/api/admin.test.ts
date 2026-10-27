@@ -17,7 +17,7 @@ function adminFetch(path: string, init?: RequestInit): Promise<Response> {
 function postJson(path: string, body: unknown): Promise<Response> {
   return adminFetch(path, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost' },
     body: JSON.stringify(body),
   })
 }
@@ -25,7 +25,7 @@ function postJson(path: string, body: unknown): Promise<Response> {
 function patchJson(path: string, body: unknown): Promise<Response> {
   return adminFetch(path, {
     method: 'PATCH',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost' },
     body: JSON.stringify(body),
   })
 }
@@ -59,6 +59,45 @@ describe('admin API access', () => {
 
   it('does not protect the public API', async () => {
     const response = await SELF.fetch('https://example.com/api/public/home')
+    expect(response.status).toBe(200)
+  })
+
+  it('adds security headers to Worker responses', async () => {
+    const response = await SELF.fetch('https://example.com/api/health')
+    expect(response.status).toBe(200)
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(response.headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin')
+    expect(response.headers.get('x-frame-options')).toBe('DENY')
+    expect(response.headers.get('content-security-policy')).toContain("default-src 'none'")
+    expect(response.headers.get('strict-transport-security')).toContain('max-age=31536000')
+  })
+
+  it('marks admin responses noindex', async () => {
+    const response = await adminFetch('/state')
+    expect(response.headers.get('x-robots-tag')).toBe('noindex')
+  })
+
+  it('rejects writes without an Origin header', async () => {
+    const response = await adminFetch('/works/w-reading/progress', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ progress: 4 }),
+    })
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({ error: 'invalid_origin' })
+  })
+
+  it('rejects cross-origin writes', async () => {
+    const response = await adminFetch('/works/w-reading/progress', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://evil.example' },
+      body: JSON.stringify({ progress: 4 }),
+    })
+    expect(response.status).toBe(403)
+  })
+
+  it('accepts same-origin writes', async () => {
+    const response = await postJson('/works/w-reading/progress', { progress: 4 })
     expect(response.status).toBe(200)
   })
 })
@@ -256,11 +295,17 @@ describe('admin history and undo', () => {
     expect(oldLog).toBeDefined()
     expect(latestLog).toBeDefined()
 
-    const old = await adminFetch(`/logs/${oldLog!.id}`, { method: 'DELETE' })
+    const old = await adminFetch(`/logs/${oldLog!.id}`, {
+      method: 'DELETE',
+      headers: { origin: 'http://localhost' },
+    })
     expect(old.status).toBe(409)
     await expect(old.json()).resolves.toMatchObject({ error: 'conflict' })
 
-    const latest = await adminFetch(`/logs/${latestLog!.id}`, { method: 'DELETE' })
+    const latest = await adminFetch(`/logs/${latestLog!.id}`, {
+      method: 'DELETE',
+      headers: { origin: 'http://localhost' },
+    })
     expect(latest.status).toBe(200)
     const result = (await latest.json()) as AdminUndoResult
     expect(result.deleted.id).toBe(latestLog!.id)

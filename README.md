@@ -3,7 +3,7 @@
 一个单用户的阅读档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人书架**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M5 已完成（进度、状态、撤销、JSON 添加/编辑）；安全/部署收尾待做
+- 当前状态：M6 代码/测试/备份完成；生产部署与最终 E2E 待执行（`media-tracker.annouimo.com` 目前仍是旧 M0 Worker）
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -310,6 +310,7 @@ WHERE w.deleted_at IS NULL;
 - 错误统一 `{ error: string, message: string }`。
 - 状态码：`400` 参数错误、`401/403` 未认证、`404` 不存在或不可公开、`409` 状态冲突/需要章节数、`422` 业务校验失败。
 - 写接口校验 `Origin`，配合 Access Cookie；不做跨域。
+- Worker API 响应加 CSP / HSTS / Referrer-Policy / X-Content-Type-Options / X-Frame-Options。
 - 公开 API 加 `ETag`/`Cache-Control`；后台 API `no-store`。
 - 管理员页面加 `X-Robots-Tag: noindex`；公开页面允许索引。
 - 搜索在当前规模下客户端完成，不需要 D1 FTS。
@@ -507,6 +508,7 @@ WHERE w.deleted_at IS NULL;
 ├── archive/             # 旧代码/旧数据 + archive/import/（gitignored）
 ├── reference/           # PaperMod 参考主题（gitignored）
 ├── .dev.vars.example
+├── .github/workflows/ci.yml
 ├── wrangler.jsonc
 ├── vite.config.ts
 ├── tsconfig.json
@@ -554,17 +556,21 @@ bun run test        # Vitest + Workers pool（用测试用 D1 fixture）
 bun run typecheck:test
 ```
 
-M1–M5 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（5 本 / 8 条 log），不接触生产数据。当前 55 个测试全部通过。
+CI 在 `.github/workflows/ci.yml`：Bun 1.4.3 + Node 22，执行 typecheck、typecheck:test、test、build。
+
+M1–M6 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（5 本 / 8 条 log），不接触生产数据。当前 61 个测试全部通过。
 
 ### 5.4 D1
 
-远程 D1 已通过 DBX 导入并完成只读校验：
+远程 D1 已通过 DBX 导入并完成只读校验。2026-10-27 备份时：
 
 ```text
-283 works / 372 logs / 79 个有日志作品
-wish 204 / reading 2 / done 51 / paused 26 / dropped 0
+284 works / 372 logs（含 M5 预览测试新增的“测试书”1 本）
+wish 205 / reading 2 / done 51 / paused 26 / dropped 0
 公开曾经读完 51 / 当前在读 2
 ```
+
+原始导入基线是 283 works / 372 logs。
 
 详细结果在 `archive/import/verification.txt`（gitignored）。
 
@@ -649,7 +655,7 @@ DEV_AUTH_BYPASS=1
 - `dist/client/`：静态资源
 - `dist/media_tracker/`：Worker bundle + 生成后的 wrangler 配置
 
-`public/_headers` 只作用于静态资源；Worker 生成的 API 响应以后在 Worker 里加安全头。
+`public/_headers` 负责静态资源的 HSTS/CSP/X-Robots；Worker 的 API 响应由 `worker/middleware/security.ts` 加安全头。
 
 ---
 
@@ -663,6 +669,14 @@ DEV_AUTH_BYPASS=1
 - `logs.json`：372 行（295 原始 + 77 条状态事件）
 - `works.sql` / `logs.sql`：literal INSERT 兜底
 - `manifest.json`：条数、SHA-256、异常、校验结果
+
+### 5.7 D1 备份
+
+2026-10-27 的备份在 `archive/backup/media-tracker-2026-10-27.sql`（gitignored）：
+
+- 284 works / 372 logs / 0 import_batches
+- 官方 `wrangler d1 export` 被只读 token 拒绝（Authentication error 10000）
+- 因此该文件通过只读 `/query` 拉取 schema + 全量数据生成；恢复前建议再用写权限 token 做一次官方 export
 - `README.md`：DBX 导入步骤、必须关闭 “Empty string as NULL”、导入顺序和校验 SQL
 
 关键数字：

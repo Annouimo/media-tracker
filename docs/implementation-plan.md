@@ -503,6 +503,20 @@ src/components/WorkPreview.vue
 
 **M6 验收**：生产 URL 可公开访问；`/admin` 走 Access；关键 E2E 通过；D1 备份存在。
 
+### 8.4 M6 完成记录（dev）
+
+- `.github/workflows/ci.yml`：Bun 1.4.3 + Node 22，typecheck / typecheck:test / test / build
+- `worker/middleware/security.ts`：CSP、HSTS、Referrer-Policy、X-Content-Type-Options、X-Frame-Options
+- `worker/middleware/origin.ts`：写接口要求同源 `Origin`，无 Origin/跨域返回 403
+- `public/_headers`：静态资源 HSTS
+- `test/api/e2e.test.ts`：创建 done → 公开首页/详情 → 撤销 → 公开 404
+- `test/api/admin.test.ts`：安全头、noindex、Origin 拒绝/接受
+- `bun run test`：61 passed
+- 2026-10-27 D1 备份：`archive/backup/media-tracker-2026-10-27.sql`（gitignored，284 works / 372 logs）
+- 官方 export 因只读 token 被拒，备份由只读 `/query` 生成；生产前应再用写权限 token 做一次官方 export
+- Access 边缘已验证；push `dev` 后需再验证 preview 的 Worker JWT 与 E2E
+- 2026-10-27 检查：生产 `media-tracker.annouimo.com` 仍是旧 M0 Worker（`/api/public/home` 返回 501）；生产部署、最终 E2E 待 dev 合并/部署后验证
+
 ---
 
 ## 9. API / 路由清单

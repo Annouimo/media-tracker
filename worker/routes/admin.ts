@@ -18,11 +18,13 @@ import {
 } from '../db/mutations'
 import { notFound } from '../domain/errors'
 import { requireAccess } from '../middleware/access'
+import { requireSameOrigin } from '../middleware/origin'
 import type { AppEnv } from '../types'
 
 const adminRoutes = new Hono<AppEnv>()
 
 adminRoutes.use('*', requireAccess)
+adminRoutes.use('*', requireSameOrigin)
 
 function noStore(c: Context<AppEnv>): void {
   c.header('Cache-Control', 'no-store')

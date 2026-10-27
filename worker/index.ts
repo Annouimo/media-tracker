@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { DomainError } from './domain/errors'
+import { securityHeaders } from './middleware/security'
 import { adminRoutes } from './routes/admin'
 import { publicRoutes } from './routes/public'
 import type { AppEnv } from './types'
@@ -7,6 +8,8 @@ import type { AppEnv } from './types'
 export type { Bindings } from './types'
 
 const app = new Hono<AppEnv>()
+
+app.use('*', securityHeaders)
 
 app.get('/api/health', async (c) => {
   if (!c.env.MEDIA_TRACKER_DB) {
