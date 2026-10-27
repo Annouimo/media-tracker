@@ -3,7 +3,7 @@
 一个单用户的阅读档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人书架**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M4 已完成（进度页、状态机、二元章节提示、撤销）；添加/编辑尚未接入
+- 当前状态：M5 已完成（进度、状态、撤销、JSON 添加/编辑）；安全/部署收尾待做
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -554,7 +554,7 @@ bun run test        # Vitest + Workers pool（用测试用 D1 fixture）
 bun run typecheck:test
 ```
 
-M1/M2/M3/M4 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（5 本 / 8 条 log），不接触生产数据。当前 46 个测试全部通过。
+M1–M5 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（5 本 / 8 条 log），不接触生产数据。当前 55 个测试全部通过。
 
 ### 5.4 D1
 

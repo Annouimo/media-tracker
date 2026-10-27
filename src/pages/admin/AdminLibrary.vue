@@ -102,11 +102,14 @@ onMounted(async () => {
 <template>
   <div class="admin">
     <header class="admin-header">
-      <h1>书架</h1>
-      <p class="muted">
-        {{ works.length }} 本
-        <template v-if="!loading && !error"> · 当前显示 {{ filtered.length }} 本</template>
-      </p>
+      <div>
+        <h1>书架</h1>
+        <p class="muted">
+          {{ works.length }} 本
+          <template v-if="!loading && !error"> · 当前显示 {{ filtered.length }} 本</template>
+        </p>
+      </div>
+      <RouterLink class="add-link" to="/admin/works/new">添加作品</RouterLink>
     </header>
 
     <div class="toolbar">
@@ -214,6 +217,9 @@ onMounted(async () => {
               <RouterLink class="action" :to="`/admin/works/${work.id}/progress`">
                 进度
               </RouterLink>
+              <RouterLink class="action" :to="`/admin/works/${work.id}/edit`">
+                编辑
+              </RouterLink>
             </td>
           </tr>
         </tbody>
@@ -224,6 +230,10 @@ onMounted(async () => {
 
 <style scoped>
 .admin-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
@@ -237,6 +247,17 @@ onMounted(async () => {
   margin: 0;
   font-size: 14px;
   color: var(--secondary);
+}
+
+.add-link {
+  flex: none;
+  padding: 0.45rem 0.8rem;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--background);
+  background: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
 }
 
 .toolbar {
@@ -315,6 +336,10 @@ onMounted(async () => {
 
 .admin-table .action {
   color: var(--secondary);
+}
+
+.admin-table .action + .action {
+  margin-left: 0.55rem;
 }
 
 .admin-table .action:hover {

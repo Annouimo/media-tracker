@@ -1,8 +1,21 @@
 import { Hono, type Context } from 'hono'
 import type { ZodType } from 'zod'
-import { progressInputSchema, roundInputSchema, statusInputSchema } from '../../shared/schemas'
-import { getAdminState, getWorkWithState, listLogsForWork } from '../db/queries'
-import { setProgress, setStatus, startNewRound, undoLog } from '../db/mutations'
+import {
+  createWorkSchema,
+  progressInputSchema,
+  roundInputSchema,
+  statusInputSchema,
+  updateWorkSchema,
+} from '../../shared/schemas'
+import { getAdminState, getLatestLog, getWorkWithState, listLogsForWork } from '../db/queries'
+import {
+  createWorkWithInitialLog,
+  setProgress,
+  setStatus,
+  startNewRound,
+  undoLog,
+  updateWork,
+} from '../db/mutations'
 import { notFound } from '../domain/errors'
 import { requireAccess } from '../middleware/access'
 import type { AppEnv } from '../types'
@@ -53,6 +66,29 @@ adminRoutes.get('/state', async (c) => {
 adminRoutes.get('/me', (c) => {
   noStore(c)
   return c.json({ email: c.get('accessEmail') })
+})
+
+adminRoutes.post('/works', async (c) => {
+  const body = await readBody(c, createWorkSchema)
+  if (body instanceof Response) return body
+
+  const work = await createWorkWithInitialLog(c.env.MEDIA_TRACKER_DB, body)
+  const log =
+    work.state.status === 'wish'
+      ? null
+      : await getLatestLog(c.env.MEDIA_TRACKER_DB, work.id)
+
+  noStore(c)
+  return c.json({ work, log }, 201)
+})
+
+adminRoutes.patch('/works/:id', async (c) => {
+  const body = await readBody(c, updateWorkSchema)
+  if (body instanceof Response) return body
+
+  const work = await updateWork(c.env.MEDIA_TRACKER_DB, c.req.param('id'), body)
+  noStore(c)
+  return c.json({ work, log: null })
 })
 
 adminRoutes.get('/works/:id', async (c) => {

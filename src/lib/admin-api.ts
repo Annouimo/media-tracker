@@ -1,4 +1,10 @@
-import type { ProgressInput, RoundInput, StatusInput } from '../../shared/schemas'
+import type {
+  CreateWorkInput,
+  ProgressInput,
+  RoundInput,
+  StatusInput,
+  UpdateWorkInput,
+} from '../../shared/schemas'
 import type {
   AdminMutationResult,
   AdminState,
@@ -13,6 +19,20 @@ export function getAdminState(): Promise<AdminState> {
 
 export function getAdminWork(id: string): Promise<AdminWorkDetail> {
   return getJson<AdminWorkDetail>(`/admin/api/works/${encodeURIComponent(id)}`)
+}
+
+export function postCreate(input: CreateWorkInput): Promise<AdminMutationResult> {
+  return requestJson<AdminMutationResult>('/admin/api/works', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function patchWork(id: string, input: UpdateWorkInput): Promise<AdminMutationResult> {
+  return requestJson<AdminMutationResult>(`/admin/api/works/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
 }
 
 export function postProgress(id: string, input: ProgressInput): Promise<AdminMutationResult> {

@@ -1,5 +1,6 @@
 import { STATUS_LABELS } from '../../shared/constants'
 import type { PublicLog, PublicWork } from '../../shared/types'
+import type { ZodError } from 'zod'
 
 export function statusLabel(status: PublicWork['status']): string {
   return STATUS_LABELS[status]
@@ -25,4 +26,11 @@ export function describeLog(log: PublicLog): string {
   }
   if (chapterProgress) return `进度：${chapterProgress}`
   return log.progress >= 1 ? '读完' : '开始阅读'
+}
+
+export function formatZodIssues(error: ZodError): string[] {
+  return error.issues.map((issue) => {
+    const path = issue.path.length > 0 ? issue.path.map(String).join('.') : '(root)'
+    return `${path}: ${issue.message}`
+  })
 }

@@ -457,6 +457,20 @@ src/components/WorkPreview.vue
 
 **M5 验收**：添加 wish/reading/done 三种作品；done 会创建初始 log；编辑不能绕过 log；重复标题给出警告。
 
+### 7.3 M5 完成记录（dev）
+
+- `POST /admin/api/works`：Zod create schema，201；wish 无 log，reading/done/paused/dropped 建初始 log
+- `PATCH /admin/api/works/:id`：只更新元数据/评论/total_progress，status/progress/finished_on 被 strict schema 拒绝
+- `src/pages/admin/AdminWorkNew.vue`
+- `src/pages/admin/AdminWorkEdit.vue`
+- `src/components/JsonEditor.vue`
+- `src/components/WorkPreview.vue`
+- JSON 格式化、解析、Zod 校验、预览、初始 log 预览、同名同作者警告
+- 书架增加“添加作品”和“编辑”入口
+- `test/api/admin.test.ts`：23 个 admin API 测试
+- `bun run test`：55 passed
+- `bun run typecheck`、`bun run typecheck:test`、`bun run build` 通过
+
 ---
 
 ## 8. M6 — 测试、安全、部署

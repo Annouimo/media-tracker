@@ -22,6 +22,14 @@ function postJson(path: string, body: unknown): Promise<Response> {
   })
 }
 
+function patchJson(path: string, body: unknown): Promise<Response> {
+  return adminFetch(path, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
 beforeEach(async () => {
   await resetDatabase()
 })
@@ -123,6 +131,107 @@ describe('admin progress and status', () => {
     const response = await postJson('/works/w-reading/progress', { progress: -1 })
     expect(response.status).toBe(422)
     await expect(response.json()).resolves.toMatchObject({ error: 'validation_error' })
+  })
+})
+
+describe('admin create and update', () => {
+  it('creates a wish work without a log', async () => {
+    const response = await postJson('/works', { title: 'New Wish' })
+    expect(response.status).toBe(201)
+
+    const result = (await response.json()) as AdminMutationResult
+    expect(result.work.title).toBe('New Wish')
+    expect(result.work.state.status).toBe('wish')
+    expect(result.log).toBeNull()
+
+    const detail = (await (await adminFetch(`/works/${result.work.id}`)).json()) as AdminWorkDetail
+    expect(detail.logs).toHaveLength(0)
+  })
+
+  it('creates a reading work with an initial log', async () => {
+    const response = await postJson('/works', {
+      title: 'New Reading',
+      status: 'reading',
+      total_progress: 5,
+      progress: 2,
+    })
+    expect(response.status).toBe(201)
+
+    const result = (await response.json()) as AdminMutationResult
+    expect(result.work.state.status).toBe('reading')
+    expect(result.work.state.progress).toBe(2)
+    expect(result.log?.event).toBe('both')
+    expect(result.log?.status).toBe('reading')
+  })
+
+  it('creates a done work with a date-only initial log', async () => {
+    const response = await postJson('/works', {
+      title: 'New Done',
+      status: 'done',
+      total_progress: 3,
+      progress: 2,
+      finished_on: '2026-10-05',
+    })
+    expect(response.status).toBe(201)
+
+    const result = (await response.json()) as AdminMutationResult
+    expect(result.work.state.status).toBe('done')
+    expect(result.work.state.finishedOn).toBe('2026-10-05')
+    expect(result.log?.logged_on).toBe('2026-10-05')
+    expect(result.log?.logged_at).toBeNull()
+  })
+
+  it('rejects id and other server-owned fields', async () => {
+    const response = await postJson('/works', { title: 'Bad', id: 'not-allowed' })
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({ error: 'validation_error' })
+  })
+
+  it('handles the binary reading prompt on create', async () => {
+    const missing = await postJson('/works', { title: 'Binary', status: 'reading' })
+    expect(missing.status).toBe(409)
+    await expect(missing.json()).resolves.toMatchObject({ error: 'needs_total_progress' })
+
+    const confirmed = await postJson('/works', {
+      title: 'Binary',
+      status: 'reading',
+      confirm_binary: true,
+    })
+    expect(confirmed.status).toBe(201)
+    const result = (await confirmed.json()) as AdminMutationResult
+    expect(result.work.state.status).toBe('reading')
+    expect(result.work.total_progress).toBe(1)
+  })
+
+  it('updates metadata without touching status', async () => {
+    const response = await patchJson('/works/w-done', {
+      title: 'Done Book Revised',
+      short_review: 'Updated review',
+      long_review_url: 'https://example.com/updated',
+    })
+    expect(response.status).toBe(200)
+
+    const result = (await response.json()) as AdminMutationResult
+    expect(result.work.title).toBe('Done Book Revised')
+    expect(result.work.short_review).toBe('Updated review')
+    expect(result.work.state.status).toBe('done')
+    expect(result.log).toBeNull()
+  })
+
+  it('rejects status changes through the edit endpoint', async () => {
+    const response = await patchJson('/works/w-done', { status: 'reading' })
+    expect(response.status).toBe(422)
+  })
+
+  it('rejects lowering total_progress below current progress', async () => {
+    const response = await patchJson('/works/w-reading', { total_progress: 2 })
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({ error: 'invalid_total_progress' })
+  })
+
+  it('returns 404 when editing a missing work', async () => {
+    const response = await patchJson('/works/missing', { title: 'Missing' })
+    expect(response.status).toBe(404)
   })
 })
 
