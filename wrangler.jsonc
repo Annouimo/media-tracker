@@ -7,7 +7,7 @@
   "workers_dev": false,
   "assets": {
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/admin/api/*"]
   },
   "observability": {
     "enabled": true
@@ -40,4 +40,11 @@
   // Previews do not inherit production settings; the `previews` block above
   // gives the branch preview its D1 binding. It currently points at the same
   // database; create a separate preview D1 before write features touch data.
+  //
+  // Cloudflare Access:
+  //   ACCESS_TEAM_DOMAIN = https://<team>.cloudflareaccess.com
+  //   ACCESS_AUD         = <Access application AUD>
+  // Set these as Worker vars (not secrets). If missing, /admin/api fails
+  // closed with access_not_configured. Localhost can use DEV_AUTH_BYPASS=1
+  // in .dev.vars; it is ignored for non-local hosts.
 }

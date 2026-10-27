@@ -57,7 +57,7 @@
 
 - [ ] 公开首页、公开详情与 PaperMod 风格一致，移动端可用。
 - [ ] 公开 API 只返回“曾经读完”或“当前在读”的作品；wish / 仅 paused 不泄露。
-- [ ] `/admin/*` 与 `/api/admin/*` 受 Access 保护；未登录返回 401/跳转。
+- [ ] `/admin*` 受 Access 保护（同时覆盖页面和 `/admin/api/*`）；未登录返回 401/跳转。
 - [ ] 进度格子只写 progress，点最后一格不自动 done；“读完”必须手动。
 - [ ] 二元作品进入 reading 时提示章节数；可显式保持二元。
 - [ ] 状态变更、进度变更、撤销都通过 log 快照；`works` 不保存 `status`。
@@ -125,7 +125,7 @@
 - [x] 部署方式确定为 Cloudflare Workers Builds 连接 GitHub，自动构建/部署。
 - [ ] 在 Cloudflare Dashboard 连接 GitHub 仓库，配置 build/deploy command（见 README 5.5）。
 - [ ] 首次部署创建 `media-tracker.annouimo.com` custom domain。
-- [ ] Access application（M3）：`/admin/*`、`/api/admin/*`。
+- [ ] Access application（M3）：一个 `/admin*` 应用同时覆盖页面和 API。
 
 Workers Builds 目标配置：
 
@@ -140,7 +140,7 @@ Workers Builds 目标配置：
 - `main`：稳定发布，Cloudflare Production branch。
 - `dev`：日常开发分支；M1+ 都提交到 `dev`。
 - Cloudflare 启用 Preview Builds；Preview command = `bun run preview:ci`。
-- `dev` push 后预览地址：`dev.media-tracker.annouimo.com`（模式 `dev.media-tracker.annouimo.com`）。
+- `dev` push 后预览地址：`dev.media-tracker.annouimo.com`。
 - Previews 不继承 production 设置；`wrangler.jsonc` 的 `previews` 块提供 D1 binding。当前指向同一个 D1，写功能上线前换独立 preview D1。
 
 ### 2.5 本地开发运行时
@@ -327,8 +327,8 @@ src/lib/api.ts
 
 ### 5.2 后台 API
 
-- `GET /api/admin/state`：全部 works + latest state + logs。
-- `GET /api/admin/me`（可选）：返回 Access email。
+- `GET /admin/api/state`：全部 works + latest state + logs。
+- `GET /admin/api/me`（可选）：返回 Access email。
 - `Cache-Control: no-store`。
 
 ### 5.3 后台书架
@@ -351,7 +351,20 @@ src/lib/admin-api.ts
 - 顶部入口：添加作品。
 - `X-Robots-Tag: noindex`。
 
-**M3 验收**：未登录访问 `/admin` 会走 Access；`/api/admin/*` 未认证返回 401；书架能看到 283 本，且公开页仍只看得到 53 本公开作品。
+**M3 验收**：未登录访问 `/admin` 会走 Access；`/admin/api/*` 未认证返回 401；书架能看到 283 本，且公开页仍只看得到 53 本公开作品。
+
+### 5.4 M3 完成记录（dev）
+
+- `worker/middleware/access.ts`：`jose` + JWKS，校验 `iss`/`aud`/`exp`；Access 未配置时 503 fail closed；`DEV_AUTH_BYPASS=1` 仅 localhost
+- `worker/routes/admin.ts`：`/admin/api/state`、`/admin/api/me`
+- `worker/types.ts`：`ACCESS_TEAM_DOMAIN`、`ACCESS_AUD`、`DEV_AUTH_BYPASS`
+- `src/pages/admin/AdminLibrary.vue`：283 本书架、搜索、状态/类型/章节/年份/短评筛选、排序
+- `src/lib/admin-api.ts`、`src/lib/http.ts`
+- `wrangler.jsonc`：`run_worker_first` 增加 `/admin/api/*`
+- `test/api/admin.test.ts`：localhost bypass 200、非 localhost 无 JWT 401、公开 API 不受影响
+- `bun run test`：36 passed
+- 本地完整数据验证：`/admin/api/state` 返回 283 works / 372 logs
+- Cloudflare Access 控制台应用尚未配置；需要 team domain + AUD 后才能在生产/预览验证后台
 
 ---
 
@@ -359,12 +372,12 @@ src/lib/admin-api.ts
 
 ### 6.1 API
 
-- `POST /api/admin/works/:id/progress`
+- `POST /admin/api/works/:id/progress`
   - `{ progress, loggedOn?, loggedAt?, totalProgress?, confirmBinary? }`
-- `POST /api/admin/works/:id/status`
+- `POST /admin/api/works/:id/status`
   - `{ status, loggedOn?, totalProgress?, confirmBinary? }`
-- `POST /api/admin/works/:id/rounds`
-- `DELETE /api/admin/logs/:id`（仅最新）
+- `POST /admin/api/works/:id/rounds`
+- `DELETE /admin/api/logs/:id`（仅最新）
 
 写入：
 
@@ -395,11 +408,11 @@ src/lib/admin-api.ts
 
 ### 7.1 API
 
-- `POST /api/admin/works`
+- `POST /admin/api/works`
   - 校验 `shared/schemas.ts` 的 create schema。
   - `status=wish` 不建 log；`reading`/`done`/`paused`/`dropped` 创建初始 log。
   - 不接受 `id`、`legacy_id`、`created_at`。
-- `PATCH /api/admin/works/:id`
+- `PATCH /admin/api/works/:id`
   - 只允许元数据/评论。
   - 拒绝 status/progress/finished_on。
   - `total_progress` 降低到低于当前进度时 422。
@@ -440,7 +453,7 @@ src/components/WorkPreview.vue
 
 ### 8.2 安全
 
-- `/admin/*` 和 `/api/admin/*` 双重保护（Access + JWT 校验）。
+- `/admin*` 一个 Access 应用同时保护页面和 `/admin/api/*`；Worker 再做 JWT 校验。
 - 写接口校验 `Origin`。
 - Worker 响应加 CSP/HSTS/Referrer-Policy/X-Content-Type-Options。
 - `/admin/*` `noindex`。
@@ -467,13 +480,13 @@ src/components/WorkPreview.vue
 | GET | `/api/health` | 公开 | 健康检查 |
 | GET | `/api/public/home` | 公开 | 首页三块数据 |
 | GET | `/api/public/works/:id` | 公开 | 公开摘要 + 完整记录 |
-| GET | `/api/admin/state` | Access | 后台全量 |
-| POST | `/api/admin/works` | Access | 创建作品 |
-| PATCH | `/api/admin/works/:id` | Access | 编辑元数据/评论 |
-| POST | `/api/admin/works/:id/progress` | Access | 记录进度 |
-| POST | `/api/admin/works/:id/status` | Access | 状态变更 |
-| POST | `/api/admin/works/:id/rounds` | Access | 开始新一轮 |
-| DELETE | `/api/admin/logs/:id` | Access | 撤销最新 log |
+| GET | `/admin/api/state` | Access | 后台全量 |
+| POST | `/admin/api/works` | Access | 创建作品 |
+| PATCH | `/admin/api/works/:id` | Access | 编辑元数据/评论 |
+| POST | `/admin/api/works/:id/progress` | Access | 记录进度 |
+| POST | `/admin/api/works/:id/status` | Access | 状态变更 |
+| POST | `/admin/api/works/:id/rounds` | Access | 开始新一轮 |
+| DELETE | `/admin/api/logs/:id` | Access | 撤销最新 log |
 
 页面：
 
@@ -506,7 +519,7 @@ src/components/WorkPreview.vue
 
 1. **D1 database_id**：`wrangler.jsonc` 仍是注释占位；M0 必须补。
 2. **DBX 直接建表 vs Wrangler migrations**：M0 跑一次 `wrangler d1 migrations apply` 记录 0001，避免后续迁移状态漂移。
-3. **Access + SPA**：后台建议独立入口整页加载；`/api/admin/*` 必须校验 JWT，不能只靠页面保护。
+3. **Access + SPA**：`/admin*` 由同一个 Access 应用保护；`/admin/api/*` 必须校验 JWT，不能只靠页面保护。
 4. **Access JWT 校验**：需要 team domain / AUD；JWKS 缓存。
 5. **公开详情范围**：已确认“摘要 + 可折叠完整记录”，完整记录公开。
 6. **二元转章节**：已确认进入 reading 时提示；已 done 不重读不提示；无章节书可显式保持二元。

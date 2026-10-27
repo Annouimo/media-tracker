@@ -12,6 +12,9 @@ export default defineConfig({
       miniflare: {
         bindings: {
           TEST_MIGRATIONS: await readD1Migrations(path.join(root, 'migrations')),
+          DEV_AUTH_BYPASS: '1',
+          ACCESS_TEAM_DOMAIN: 'https://test.cloudflareaccess.com',
+          ACCESS_AUD: 'test-aud',
         },
       },
     })),

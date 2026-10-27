@@ -3,7 +3,7 @@
 一个单用户的阅读档案：**公开的极简阅读列表** + **Cloudflare Access 保护的私人书架**。
 
 - 技术栈：Vue 3 + TypeScript + Vite + Cloudflare Workers（Static Assets）+ D1 + Hono + Bun
-- 当前状态：M2 已完成（公开 API、首页、公开详情、搜索）；后台/写入尚未接入
+- 当前状态：M3 代码已完成（公开 API/页面、Access 校验、`/admin` 书架）；Cloudflare Access 控制台/AUD 待配置；写入流程尚未接入
 - 旧版代码和旧数据在 `archive/`，PaperMod 参考主题在 `reference/`；两者都在 `.gitignore` 中，不进入版本库
 
 ---
@@ -172,15 +172,15 @@ WHERE w.deleted_at IS NULL;
 
 ### 2.1 权限
 
-- Cloudflare Access 保护：
-  - `/admin/*`
-  - `/api/admin/*`
+- Cloudflare Access 应用路径：`/admin*`
+  - 同一个应用同时覆盖 `/admin` 页面和 `/admin/api/*`，只产生一个 AUD。
 - 公开只读：
   - `/`
   - `/works/:id`
   - `/api/public/*`
-- Worker 在 `/api/admin/*` 上校验 `Cf-Access-Jwt-Assertion`，不能只依赖页面被 Access 保护。
-- 本地开发用 `.dev.vars` 里的 `DEV_AUTH_BYPASS=1` 跳过 Access 校验；该变量绝不能进入生产环境。
+- Worker 在 `/admin/api/*` 上校验 `Cf-Access-Jwt-Assertion`（`ACCESS_TEAM_DOMAIN` + `ACCESS_AUD`），不能只依赖页面被 Access 保护。
+- Access 未配置时 admin API fail closed：返回 503 `access_not_configured`。
+- 本地开发用 `.dev.vars` 里的 `DEV_AUTH_BYPASS=1` 跳过 Access 校验；只对 localhost 生效。
 - 不提供公开写入接口。
 
 ### 2.2 公开 API
@@ -243,11 +243,11 @@ WHERE w.deleted_at IS NULL;
 
 ### 2.3 后台 API
 
-#### `GET /api/admin/state`
+#### `GET /admin/api/state`
 
 返回全部作品、当前状态和全部 logs，供 `/admin` 书架、进度页和编辑页使用。当前规模（283 本 / 迁移后约 372 条 logs）一次返回即可；后台响应 `Cache-Control: no-store`。
 
-#### `POST /api/admin/works`
+#### `POST /admin/api/works`
 
 创建作品。请求体是第 3.7 节的 JSON schema。行为：
 
@@ -258,14 +258,14 @@ WHERE w.deleted_at IS NULL;
 - 支持 `short_review`、`long_review_url`；
 - 不接受客户端传 `id`、`legacy_id`、`created_at`。
 
-#### `PATCH /api/admin/works/:id`
+#### `PATCH /admin/api/works/:id`
 
 只修改元数据和评论：`title`、`creator`、`release_year`、`type`、`total_progress`、`short_review`、`long_review_url`。
 
 - 不接受 `status` / `progress`；这两者只能通过 log 接口修改。
 - 修改 `total_progress` 时，不重写历史 `total_snapshot`；如果降低到低于当前进度，返回 422 警告/拒绝。
 
-#### `POST /api/admin/works/:id/progress`
+#### `POST /admin/api/works/:id/progress`
 
 ```ts
 {
@@ -282,7 +282,7 @@ WHERE w.deleted_at IS NULL;
 - 当前状态为 `paused` / `dropped` 时，默认保持原状态，除非另调 continue 接口；
 - 如果 `total_progress = 1` 且要进入 `reading`，返回 `409 needs_total_progress`，除非带 `totalProgress > 1` 或 `confirmBinary: true`。
 
-#### `POST /api/admin/works/:id/status`
+#### `POST /admin/api/works/:id/status`
 
 ```ts
 {
@@ -297,11 +297,11 @@ WHERE w.deleted_at IS NULL;
 - 进入 `reading` 且 `total_progress = 1` 时返回 `409 needs_total_progress`，除非带 `totalProgress > 1` 或 `confirmBinary: true`；
 - 不允许回到 `wish`（有日志时 409）。
 
-#### `POST /api/admin/works/:id/rounds`
+#### `POST /admin/api/works/:id/rounds`
 
 开始新一轮：`round + 1`，`status='reading'`，`progress=0`，`event='both'`；二元作品同样触发章节数提示。
 
-#### `DELETE /api/admin/logs/:id`
+#### `DELETE /admin/api/logs/:id`
 
 撤销：只允许删除该作品 `seq` 最大的 log，删除后当前状态自然回到上一条快照。
 
@@ -483,14 +483,19 @@ WHERE w.deleted_at IS NULL;
 ├── src/                 # Vue 客户端
 │   ├── App.vue
 │   ├── main.ts
+│   ├── router.ts
 │   ├── style.css
-│   └── theme.ts
+│   ├── components/
+│   ├── lib/
+│   └── pages/           # PublicHome / PublicWork / admin
 ├── shared/              # 共享类型、Zod schema、日期工具
 ├── worker/              # Cloudflare Worker / API
 │   ├── index.ts
 │   ├── domain/          # 状态机、日期、领域错误
-│   └── db/              # D1 查询与写入
-├── test/                # 领域/DB 测试 + 脱敏 fixture
+│   ├── db/              # D1 查询与写入
+│   ├── routes/          # public / admin API
+│   └── middleware/      # Access JWT
+├── test/                # 领域/DB/API 测试 + 脱敏 fixture
 ├── public/              # 静态资源、_headers、favicon
 ├── migrations/          # D1 migrations
 │   └── 0001_init.sql
@@ -501,6 +506,7 @@ WHERE w.deleted_at IS NULL;
 │   └── implementation-plan.md
 ├── archive/             # 旧代码/旧数据 + archive/import/（gitignored）
 ├── reference/           # PaperMod 参考主题（gitignored）
+├── .dev.vars.example
 ├── wrangler.jsonc
 ├── vite.config.ts
 ├── tsconfig.json
@@ -548,7 +554,7 @@ bun run test        # Vitest + Workers pool（用测试用 D1 fixture）
 bun run typecheck:test
 ```
 
-M1/M2 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（5 本 / 8 条 log），不接触生产数据。当前 32 个测试全部通过。
+M1/M2/M3 测试使用 `test/fixtures/seed.sql` 的小型脱敏数据（5 本 / 8 条 log），不接触生产数据。当前 36 个测试全部通过。
 
 ### 5.4 D1
 
@@ -608,14 +614,35 @@ media-tracker.annouimo.com
 - Vite 插件生成的 `dist/media_tracker/wrangler.json` 包含 `MEDIA_TRACKER_DB` D1 binding，但**不包含** custom domain route。
 - 自动部署使用 `wrangler deploy`；部署后访问 `/api/health`，确认返回 `{"ok":true,"db":"ok"}`。
 - D1 binding 现在在配置文件里，不会再被 `wrangler deploy` 清掉；域名仍然完全由 Dashboard 管理。
-- Access 策略不在 M0 配置；M3 再给 `/admin/*` 和 `/api/admin/*` 加 Access。
 
-本地 Access bypass（仅本地，M3 使用）：
+### 5.5.1 Cloudflare Access
+
+在 Zero Trust → Access → Applications 添加一个 Self-hosted 应用：
+
+```text
+Domain: media-tracker.annouimo.com
+Path:   /admin*
+```
+
+`/admin*` 同时保护后台页面和 `/admin/api/*`，只需要一个 AUD。
+
+在 Worker 配置中添加（不是 secrets；建议写进 `wrangler.jsonc` 的 `vars`，preview 用 `previews.vars`，避免部署时被覆盖）：
+
+```text
+ACCESS_TEAM_DOMAIN=https://<team>.cloudflareaccess.com
+ACCESS_AUD=<Access application AUD>
+```
+
+`dev.media-tracker.annouimo.com` 的 preview 是独立的 Access 应用（同样 path `/admin*`），需要把它的 AUD 配到 preview 环境变量；不要和 production AUD 混用。
+
+本地 Access bypass：
 
 ```bash
 # .dev.vars
 DEV_AUTH_BYPASS=1
 ```
+
+该 bypass 只对 localhost 生效。Access 未配置时 `/admin/api/*` 返回 503，不会静默放行。
 
 ### 5.6 构建输出
 

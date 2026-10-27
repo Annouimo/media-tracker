@@ -1,10 +1,11 @@
 import { Hono } from 'hono'
+import { adminRoutes } from './routes/admin'
 import { publicRoutes } from './routes/public'
-import type { Bindings } from './types'
+import type { AppEnv } from './types'
 
 export type { Bindings } from './types'
 
-const app = new Hono<{ Bindings: Bindings }>()
+const app = new Hono<AppEnv>()
 
 app.get('/api/health', async (c) => {
   if (!c.env.MEDIA_TRACKER_DB) {
@@ -38,8 +39,9 @@ app.get('/api/health', async (c) => {
 })
 
 app.route('/api/public', publicRoutes)
+app.route('/admin/api', adminRoutes)
 
-// Placeholder for admin routes, implemented in M3+.
+// Placeholder for future public API routes.
 app.all('/api/*', (c) => c.json({ error: 'not_implemented' }, 501))
 
 app.onError((error, c) => {

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import AdminLibrary from './pages/admin/AdminLibrary.vue'
 import NotFound from './pages/NotFound.vue'
 import PublicHome from './pages/PublicHome.vue'
 import PublicWork from './pages/PublicWork.vue'
@@ -15,6 +16,12 @@ export const router = createRouter({
       path: '/works/:id',
       name: 'work',
       component: PublicWork,
+    },
+    {
+      path: '/admin',
+      name: 'admin-library',
+      component: AdminLibrary,
+      meta: { wide: true },
     },
     {
       path: '/:pathMatch(.*)*',
